@@ -45,7 +45,7 @@ const chatGlobal = globalThis as typeof globalThis & {
   shoppingChatApplicationVersion?: number;
 };
 
-const SHOPPING_CHAT_APPLICATION_VERSION = 3;
+const SHOPPING_CHAT_APPLICATION_VERSION = 6;
 export const shoppingChatApplication = chatGlobal.shoppingChatApplication
   && chatGlobal.shoppingChatApplicationVersion === SHOPPING_CHAT_APPLICATION_VERSION
   ? chatGlobal.shoppingChatApplication

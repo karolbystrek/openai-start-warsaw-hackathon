@@ -72,6 +72,7 @@ export interface SimulatorControl {
   step(): SimulationEvent | null;
   reset(): void;
   setSpeed(multiplier: number): void;
+  listEvents(): readonly SimulationEvent[];
   getState(): {
     status: "PLAYING" | "PAUSED" | "COMPLETE";
     speed: number;

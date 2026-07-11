@@ -31,7 +31,7 @@ type SessionTokenResponse = {
 
 const phaseLabel: Record<VoicePhase, string> = {
   idle: "Resting",
-  connecting: "Waking up",
+  connecting: "Thinking",
   listening: "Listening",
   thinking: "Checking your brief",
   speaking: "Speaking",
@@ -63,6 +63,7 @@ export function VoiceShoppingCompanion({
 }: VoiceShoppingCompanionProps) {
   const sessionRef = useRef<RealtimeSession | null>(null);
   const [phase, setPhase] = useState<VoicePhase>("idle");
+  const [visible, setVisible] = useState(false);
   const [connected, setConnected] = useState(false);
   const [muted, setMuted] = useState(false);
   const [briefReady, setBriefReady] = useState(false);
@@ -76,6 +77,7 @@ export function VoiceShoppingCompanion({
     setConnected(false);
     setMuted(false);
     setPhase("idle");
+    setVisible(false);
   }, []);
 
   const startVoice = useCallback(async () => {
@@ -83,6 +85,7 @@ export function VoiceShoppingCompanion({
     setError(null);
     setBriefReady(false);
     setMissingQuestions([]);
+    setTranscript("Scout is thinking and getting ready to listen…");
     setPhase("connecting");
 
     try {
@@ -186,7 +189,10 @@ export function VoiceShoppingCompanion({
   };
 
   useEffect(() => {
-    const summon = () => void startVoice();
+    const summon = () => {
+      setVisible(true);
+      void startVoice();
+    };
     const summonWithKeyboard = (event: KeyboardEvent) => {
       if (event.altKey && event.key.toLowerCase() === "v") {
         event.preventDefault();
@@ -202,6 +208,8 @@ export function VoiceShoppingCompanion({
   }, [startVoice]);
 
   useEffect(() => () => sessionRef.current?.close(), []);
+
+  if (!visible && phase === "idle") return null;
 
   return (
     <section className={`voice-companion voice-${phase}`} aria-label="Scout voice shopping companion">
@@ -243,11 +251,9 @@ export function VoiceShoppingCompanion({
             <button type="button" className="voice-primary stop" onClick={stopVoice}>End call</button>
           </>
         ) : (
-          <button type="button" className="voice-primary" onClick={() => void startVoice()} disabled={disabled || phase === "connecting"}>
-            {phase === "connecting" ? "Calling…" : phase === "error" ? "Try again" : "Call Scout"}
-          </button>
+          <button type="button" className="voice-secondary" onClick={stopVoice}>Close</button>
         )}
-        <small>Alt+V · or type /voice</small>
+        <small>{connected ? "Voice mode active" : "Use the Scout button to reconnect"}</small>
       </div>
     </section>
   );

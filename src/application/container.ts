@@ -42,7 +42,7 @@ const checkpointGlobal = globalThis as typeof globalThis & {
   checkpointApplicationVersion?: number;
 };
 
-const CHECKPOINT_APPLICATION_VERSION = 3;
+const CHECKPOINT_APPLICATION_VERSION = 6;
 const cachedCheckpointApplication = checkpointGlobal.checkpointApplication;
 export const checkpointApplication = cachedCheckpointApplication
   && checkpointGlobal.checkpointApplicationVersion === CHECKPOINT_APPLICATION_VERSION

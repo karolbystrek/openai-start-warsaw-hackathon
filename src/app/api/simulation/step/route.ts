@@ -7,6 +7,7 @@ export const runtime = "nodejs";
 
 const StepCommandSchema = z.object({
   expectedSequence: z.number().int().nonnegative(),
+  expectedEventId: z.string().min(1).optional(),
 });
 
 export async function POST(request: Request) {
@@ -20,7 +21,10 @@ export async function POST(request: Request) {
 
   try {
     const state = SimulationStateSchema.parse(
-      await checkpointApplication.stepSimulation(command.data.expectedSequence),
+      await checkpointApplication.stepSimulation(
+        command.data.expectedSequence,
+        command.data.expectedEventId,
+      ),
     );
     return Response.json(state);
   } catch (error) {

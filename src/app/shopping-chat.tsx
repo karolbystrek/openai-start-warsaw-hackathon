@@ -13,6 +13,7 @@ import {
 } from "@/app/voice-shopping-companion";
 import { presentationProducts } from "@/domain/catalog/presentation-products";
 import type {
+  DecisionRecord,
   ShoppingBriefInterpretation,
   ShoppingRequest,
 } from "@/domain/contracts";
@@ -56,6 +57,27 @@ function assistantSummary(result: InterpretationResponse): string {
   return "The brief is complete. Review the hard constraints below and confirm them before monitoring is activated.";
 }
 
+function eventTitle(state: SimulationState): string {
+  const event = state.simulator.currentEvent;
+  if (!event) return "Waiting for the first merchant update";
+  if (event.type === "OFFER_OBSERVED") return event.offer.title;
+  return event.type.replaceAll("_", " ").toLowerCase().replace(/^./, (letter) => letter.toUpperCase());
+}
+
+function reactionTitle(decision: DecisionRecord): string {
+  switch (decision.outcome) {
+    case "ALERT": return "I found a deal that matches your requirements";
+    case "BUY_SIMULATED": return "Your matching deal was purchased in the simulator";
+    case "REJECT": return "This offer did not qualify, so I kept monitoring";
+    case "ESCALATE": return "I need more information before acting on this offer";
+    case "IGNORE": return "I checked this update and kept monitoring";
+  }
+}
+
+function readableReason(reason: string): string {
+  return reason.replaceAll("_", " ").toLowerCase().replace(/^./, (letter) => letter.toUpperCase());
+}
+
 async function readResponse<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => null) as (T & { error?: string }) | null;
   if (!response.ok) throw new Error(payload?.error ?? "The shopping assistant request failed.");
@@ -66,6 +88,7 @@ async function readResponse<T>(response: Response): Promise<T> {
 export function ShoppingChat() {
   const router = useRouter();
   const conversationEndRef = useRef<HTMLDivElement>(null);
+  const announcedDecisionIds = useRef(new Set<string>());
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [userTurns, setUserTurns] = useState<string[]>([]);
@@ -74,6 +97,40 @@ export function ShoppingChat() {
   const [confirmedRequest, setConfirmedRequest] = useState<ShoppingRequest | null>(null);
   const [pending, setPending] = useState<"interpret" | "confirm" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [monitoringState, setMonitoringState] = useState<SimulationState | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const refreshMonitoring = async () => {
+      try {
+        const response = await fetch("/api/simulation", { cache: "no-store" });
+        const state = await readResponse<SimulationState>(response);
+        if (cancelled) return;
+        setMonitoringState(state);
+        const decision = state.currentDecision;
+        if (decision
+          && (decision.outcome === "ALERT" || decision.outcome === "BUY_SIMULATED")
+          && !announcedDecisionIds.current.has(decision.id)) {
+          announcedDecisionIds.current.add(decision.id);
+          setMessages((current) => [...current, {
+            id: `assistant-decision-${decision.id}`,
+            role: "assistant",
+            content: state.receipt?.concise ?? reactionTitle(decision),
+          }]);
+        }
+      } catch (cause) {
+        if (!cancelled) console.error("Could not refresh monitoring results.", cause);
+      }
+    };
+
+    void refreshMonitoring();
+    const interval = window.setInterval(refreshMonitoring, 2_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
 
   const summonVoice = () => window.dispatchEvent(new Event("shopping-voice-summon"));
 
@@ -181,6 +238,8 @@ export function ShoppingChat() {
         return;
       }
       setConfirmedRequest(result.request);
+      const stateResponse = await fetch("/api/simulation", { cache: "no-store" });
+      setMonitoringState(await readResponse<SimulationState>(stateResponse));
       setMessages((current) => [...current, {
         id: `assistant-${crypto.randomUUID()}`,
         role: "assistant",
@@ -202,6 +261,7 @@ export function ShoppingChat() {
     setInput("");
     setInterpretation(null);
     setConfirmedRequest(null);
+    setMonitoringState(null);
     setError(null);
   };
 
@@ -214,9 +274,8 @@ export function ShoppingChat() {
   const selectedColor = draft?.preferences.find((preference) => /^Color:/i.test(preference))?.replace(/^Color:\s*/i, "");
 
   useEffect(() => {
-    if (userTurns.length === 0) return;
     conversationEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [interpretation, messages, pending, userTurns.length]);
+  }, [interpretation, messages, monitoringState?.currentDecision?.id, pending]);
 
   useLayoutEffect(() => {
     const textarea = messageInputRef.current;
@@ -235,7 +294,6 @@ export function ShoppingChat() {
           <span>Shopping Assistant</span>
         </Link>
         <nav aria-label="Chat actions">
-          <button className="new-chat" type="button" onClick={summonVoice} disabled={pending !== null}>Call Scout</button>
           <button className="new-chat" type="button" onClick={resetChat} disabled={pending !== null}>New chat</button>
           <Link className="details-link" href="/details">Details</Link>
         </nav>
@@ -259,11 +317,6 @@ export function ShoppingChat() {
             </div>
           ) : null}
         </div>
-
-        <VoiceShoppingCompanion
-          disabled={pending !== null}
-          onBriefReview={reviewVoiceBrief}
-        />
 
         <div className="chat-messages" aria-live="polite">
           {messages.map((message) => (
@@ -335,8 +388,23 @@ export function ShoppingChat() {
         </div>
       </section>
 
+      <VoiceShoppingCompanion
+        disabled={pending !== null}
+        onBriefReview={reviewVoiceBrief}
+      />
+
       <form className="chat-composer" onSubmit={sendMessage}>
         <label className="sr-only" htmlFor="shopping-message">Message the shopping assistant</label>
+        <button
+          className="voice-mode-button"
+          type="button"
+          onClick={summonVoice}
+          disabled={pending !== null}
+          aria-label="Start Scout voice mode"
+          title="Start Scout voice mode"
+        >
+          <span className="voice-mode-face" aria-hidden="true"><i /><i /></span>
+        </button>
         <textarea
           id="shopping-message"
           maxLength={2_000}

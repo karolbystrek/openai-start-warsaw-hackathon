@@ -99,6 +99,7 @@ export class CheckpointApplication {
     return SimulationStateSchema.parse({
       request,
       simulator: simulator.getState(),
+      availableEvents: simulator.listEvents(),
       processedEvents,
       decisions,
       currentDecision,
@@ -232,11 +233,11 @@ export class CheckpointApplication {
     });
   }
 
-  async stepSimulation(expectedSequence: number): Promise<SimulationState> {
-    return this.serializeMutation(() => this.stepSimulationOnce(expectedSequence));
+  async stepSimulation(expectedSequence: number, expectedEventId?: string): Promise<SimulationState> {
+    return this.serializeMutation(() => this.stepSimulationOnce(expectedSequence, expectedEventId));
   }
 
-  private async stepSimulationOnce(expectedSequence: number): Promise<SimulationState> {
+  private async stepSimulationOnce(expectedSequence: number, expectedEventId?: string): Promise<SimulationState> {
     const { repository, matching, verification, pricing, policy } = this.dependencies;
     const { runId, simulator } = this.runtime;
     const currentRequest = await this.loadCurrentRequest();
@@ -245,6 +246,11 @@ export class CheckpointApplication {
     if (simulator.getState().nextSequence !== expectedSequence) return this.getSimulationState();
     const event = simulator.step();
     if (!event) return this.getSimulationState();
+    if (expectedEventId && event.id !== expectedEventId) {
+      simulator.reset();
+      recoverSimulator(simulator, await repository.listEvents(runId));
+      throw new Error("The selected event is no longer next in the queue. Refresh the page and try again.");
+    }
     const request = await this.loadCurrentRequest(event.occurredAt);
 
     try {
@@ -546,6 +552,10 @@ export class CheckpointApplication {
     const current = await repository.getCurrentRequest(fallback.id, effectiveAt)
       ?? await repository.getLatestRequest(effectiveAt);
     if (current) {
+      if (scenarioResolver) {
+        const selected = scenarioResolver(current);
+        if (selected.runId !== this.runtime.runId) this.runtime = selected;
+      }
       this.activeRequest = current;
       return current;
     }

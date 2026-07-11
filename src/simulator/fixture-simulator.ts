@@ -59,6 +59,10 @@ export class FixtureSimulator implements SimulatorControl {
     }
   }
 
+  listEvents(): readonly SimulationEvent[] {
+    return this.events;
+  }
+
   getState() {
     return {
       status: this.status,

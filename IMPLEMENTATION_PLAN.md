@@ -533,6 +533,8 @@ These tasks implement the additional feature described above. They do not block 
 
 ### Phase 5 — Demo polish
 
+- [x] Expose the active scenario's preconfigured merchant events as a readable send queue with event previews and visible engine reactions.
+- [x] Refresh monitoring state in the user chat and surface qualifying alerts with the delivered total and requirement results.
 - [ ] Finalize scenario selection, virtual-time controls, and visible event progression.
 - [ ] Polish visual hierarchy for requirements, evidence, decisions, costs, and consent.
 - [x] Verify concise receipts at a glance and expanded audit details on demand.
