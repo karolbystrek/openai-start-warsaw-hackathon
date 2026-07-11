@@ -25,7 +25,10 @@ export default async function Home() {
         </div>
       </header>
 
-      <SimulatorControls complete={state.simulator.status === "COMPLETE"} />
+      <SimulatorControls
+        complete={state.simulator.status === "COMPLETE"}
+        nextSequence={state.simulator.nextSequence}
+      />
 
       <section className="grid">
         <article className="card request-card">
@@ -48,7 +51,7 @@ export default async function Home() {
               <dl>
                 <div><dt>Merchant</dt><dd>{event.offer.merchantId}</dd></div>
                 <div><dt>Sticker price</dt><dd>{formatMoney(event.offer.itemPrice.currency, event.offer.itemPrice.minorUnits)}</dd></div>
-                <div><dt>Sequence</dt><dd>{event.sequence + 1} / 2</dd></div>
+                <div><dt>Event</dt><dd>#{event.sequence + 1}</dd></div>
               </dl>
             </>
           ) : <p className="empty">Step the simulator to load the first validated offer.</p>}
@@ -60,7 +63,9 @@ export default async function Home() {
             <>
               <h2 data-testid="decision-outcome">{decision.outcome}</h2>
               <p className="reason">{decision.primaryReason}</p>
-              <p className="stub-badge">STUB · {decision.provenance.source}</p>
+              <p className={`provenance-badge ${decision.provenance.kind.toLowerCase()}`}>
+                {decision.provenance.kind} · {decision.provenance.source}
+              </p>
               <ul className="checks">
                 {decision.requirements.map((requirement) => (
                   <li key={requirement.requirement}><span className={requirement.result.toLowerCase()}>{requirement.result}</span>{requirement.requirement}</li>

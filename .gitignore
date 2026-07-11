@@ -1,9 +1,18 @@
 node_modules/
 .pnpm-store/
 .next/
+out/
+coverage/
+playwright-report/
+test-results/
 *.tsbuildinfo
 .env
 .env.local
+!.env.example
 data/*.db
 data/*.db-*
 drizzle/meta/_journal.json.tmp
+
+# Private local planning files
+.my_plan.md
+.gitignore.local.bak

@@ -398,6 +398,30 @@ Cover confirmed, recurring, predicted, speculative, cancelled, and rescheduled p
 
 Report scheduled-recheck accuracy and **harmful-wait rate**: recommendations that would cause the user to miss a valid current deal without obtaining an equal or better valid deal within the stated deadline. These extension metrics supplement, but never replace, strike precision and false-buy rate.
 
+## Additional feature — Voice brief intake
+
+This is a stretch feature and must remain outside the authoritative core decision pipeline. Build it only after the complete current-offer path reaches its exit verification. The application must be able to disable or remove this feature without changing core contracts, decisions, purchase authorization, or the headline scenario.
+
+The extension adds a spoken alternative to the existing text brief. It uses an OpenAI Realtime (audio) session with function-calling tools that call back into the existing `BriefInterpreter`/`ShoppingRequestSchema` (`src/ai/openai-brief-interpreter.ts`, `src/domain/contracts/index.ts`) rather than duplicating brief-interpretation logic. The model may ask about missing or ambiguous facts and read back a draft interpretation, including a draft mandate summary, but no tool exposed to the model may set a request's `lifecycle` to `ACTIVE`, create, or confirm a mandate. Activation and mandate consent still require an explicit, non-voice confirmation in the UI, identical to the existing text-brief flow.
+
+### Optional modules and contracts
+
+```text
+src/additional/voice-intake/
+  contracts.ts   VoiceSession, VoiceTurn, VoiceCollectedDraft
+  session.ts     Realtime session lifecycle, audio streaming
+  tools.ts       function-calling bridge to interpretShoppingBrief and to
+                 reading unresolvedAmbiguities/the mandate draft
+```
+
+Optional contracts should contain:
+
+- `VoiceSession`: id, nullable requestId, status (`ACTIVE`, `ENDED`), started/ended timestamps;
+- `VoiceTurn`: role, transcript text, timestamp, and the associated model response identifier, so the full conversation is auditable like any other AI-derived claim;
+- `VoiceCollectedDraft`: a pointer to the in-progress `ShoppingRequest` draft, kept separate from any confirmed, active version.
+
+If no microphone or API key is available, the existing text-brief path works unchanged — this feature is fully optional and feature-flagged, like the opportunity horizon.
+
 ## 12. Delivery phases and exit criteria
 
 ### How to use this checklist
@@ -442,11 +466,14 @@ Report scheduled-recheck accuracy and **harmful-wait rate**: recommendations tha
 - [ ] Create the canonical demo catalog and disclose its seeded mappings and aliases.
 - [ ] Implement exact-identifier, seeded, normalized, attribute-level, and AI-assisted matching stages.
 - [ ] Persist provenance for every AI-derived matching claim.
-- [ ] Implement the seeded simulator, virtual clock, event playback, pause, step, and reset.
+- [x] Implement the seeded simulator, virtual clock, event playback, pause, step, and reset.
 - [ ] Implement the authoritative offer-evaluation application service.
+  - Typed matching, verification, pricing, policy, receipt, idempotency, and atomic persistence orchestration is implemented in `CheckpointApplication`; loading the active request version from persistence and scoping decisions by request version/run still remain.
 - [x] Generate concise and expanded receipts from the same decision record.
 - [ ] Build the request, offer timeline, verification, landed-cost, and decision UI.
+  - Request, current event, requirement checks, landed cost, decision, and receipt views are implemented. A complete multi-event timeline remains.
 - [ ] Add the complete headline alert scenario and its automated scenario test.
+  - The deterministic `REJECT` at EUR 81.60 followed by `ALERT` at EUR 76.40 passes manual production smoke checks. Automated tests remain prohibited by repository guidance.
 - [ ] **Exit verification:** Run the headline scenario to a justified `ALERT` and trace every displayed claim to stored facts and evidence.
 
 ### Phase 3 — Controlled autonomy
@@ -488,11 +515,22 @@ These tasks implement the additional feature described above. They do not block 
 - [ ] Report scheduled-recheck accuracy and harmful-wait rate separately from core metrics.
 - [ ] **Optional verification:** Disable the feature and prove the core journey is unchanged; enable it and run the deterministic 20-day extension without allowing it to authorize or delay a purchase.
 
+### Optional stretch track — Voice brief intake
+
+These tasks implement the additional feature described above. They do not block any phase exit verification and should begin only after Phase 2's complete alert journey is stable.
+
+- [ ] Freeze `VoiceSession`, `VoiceTurn`, and `VoiceCollectedDraft` contracts without changing the core decision enum or `ShoppingRequestSchema`.
+- [ ] Implement an OpenAI Realtime session with function-calling tools that only read or propose a draft request/mandate.
+- [ ] Reuse the existing `BriefInterpreter` for structured extraction instead of a second interpretation path.
+- [ ] Build a recording/transcript indicator and a mandatory explicit UI confirmation step before activation or mandate consent.
+- [ ] Verify the no-microphone/no-API-key fallback leaves the text-brief path fully functional.
+- [ ] **Optional verification:** Disable the feature and prove the core journey and all four checkpoints are unchanged; enable it and complete the headline scenario starting from a spoken brief instead of typed text, with activation still gated on an explicit UI confirmation.
+
 ### Phase 5 — Demo polish
 
 - [ ] Finalize scenario selection, virtual-time controls, and visible event progression.
 - [ ] Polish visual hierarchy for requirements, evidence, decisions, costs, and consent.
-- [ ] Verify concise receipts at a glance and expanded audit details on demand.
+- [x] Verify concise receipts at a glance and expanded audit details on demand.
 - [ ] Build the evaluation dashboard with metric definitions and per-scenario failures.
 - [ ] Add a reliable clean-state reset command and documented demo runbook.
 - [ ] Test the complete demo from a clean checkout on the presentation machine.
@@ -596,13 +634,18 @@ Checklist:
 - [x] Scaffold Next.js, shared styling/components, SQLite/Drizzle, migrations, and repository adapters.
 - [ ] Implement request creation, interpreted-brief confirmation, activation, pause, and revocation flows.
 - [ ] Implement `evaluate-offer.ts` using typed matching, verification, pricing, policy, audit, and persistence interfaces.
+  - The application orchestration and atomic `saveEvaluation` port are implemented under `CheckpointApplication`; active-request lookup/version scoping must be completed before this item can be checked.
 - [ ] Implement serialized `recheck-and-buy.ts`, idempotent simulated-order storage, and mandate consumption.
 - [ ] Build request, simulator controls, event timeline, verification, landed-cost, decision, mandate, and receipt views.
+  - Request, controls, current event, checks, landed cost, decision, and receipt are present. Full timeline and mandate/purchase views remain.
 - [ ] Build the evaluation dashboard from Person A's metrics and Person B's ground-truth scenarios.
 - [x] Maintain in-memory stubs for unavailable Person A or B services so UI and orchestration work can continue asynchronously.
 - [ ] Replace stubs with real adapters at each convergence checkpoint and add a contract test for every replacement.
+  - Real verification, landed-cost, policy, notification, and receipt services are integrated. Matching still uses the fixture adapter, and automated contract tests remain prohibited by repository guidance.
 - [ ] Own the clean-state reset command, demo runbook, Playwright journey, and final rehearsal.
+  - Reset command and local run instructions exist and pass in a stopped, single-process environment. Multi-process reset safety, a committed Playwright journey, and final rehearsal remain.
 - [ ] **Track verification:** The app can run the full headline journey first with stubs and then with real services, without changing UI-facing contracts.
+  - The headline journey passes with real Person A services and fixture matching. Real Person B brief/matching integration remains.
 
 Person C can begin immediately after the shared contract checkpoint using one fixed event fixture, one fixed decision record, and in-memory repositories.
 
@@ -614,6 +657,13 @@ If the team activates the time-aware additional feature:
 - Person B owns mocked promotion, birthday, resale, stock-risk, and virtual-time recheck fixtures under the additional scenario directory.
 - Person C owns optional persistence, scheduler wiring, feature flag, and the opportunity-horizon UI.
 - All three owners must prove that disabling the feature leaves core contracts, scenario outputs, and the headline demo unchanged.
+
+If the team activates the voice brief intake feature:
+
+- Person C owns the Realtime session integration, feature flag, and the recording/transcript/explicit-confirmation UI under `src/additional/voice-intake/`.
+- Person B owns the function-calling tool definitions and prompt used during the conversation, as a natural extension of `src/ai/`.
+- Person A has no role in this feature; it never touches pricing, verification, or policy.
+- All three owners must prove that disabling the feature leaves the text-brief flow, core contracts, and the headline demo unchanged.
 
 ### Convergence checkpoints
 
@@ -630,7 +680,7 @@ Do not wait until all three tracks are finished. Merge or rebase frequently, but
 
 - [ ] Integrate real brief interpretation and matching from Person B.
 - [x] Integrate real landed cost and alert policy from Person A.
-- [ ] Persist and display the real decision receipt through Person C.
+- [x] Persist and display the real decision receipt through Person C.
 - [ ] **Checkpoint verification:** The headline scenario rejects its first deceptive offers and produces one valid `ALERT` with exact arithmetic and evidence.
 
 #### Checkpoint 3 — Controlled purchase slice
@@ -646,6 +696,12 @@ Do not wait until all three tracks are finished. Merge or rebase frequently, but
 - [ ] Person A produces a separate opportunity recommendation only when timing and risk rules permit it; the core decision still rejects any hard condition mismatch.
 - [ ] Person C persists the scheduled recheck and shows current versus projected cost without presenting the projection as guaranteed.
 - [ ] **Optional verification:** The same deterministic timeline re-evaluates after 20 virtual days using current evidence; an alternate seed identifies a harmful wait, and disabling the extension leaves Checkpoints 1–3 unchanged.
+
+#### Optional checkpoint — Voice brief intake slice
+
+- [ ] Person C wires a Realtime session that collects a spoken brief and mandate draft through Person B's function-calling tools.
+- [ ] The headline scenario runs end to end starting from a spoken brief, with activation still gated on an explicit UI confirmation, not a spoken one.
+- [ ] **Optional verification:** Disabling the feature leaves the text-brief flow and Checkpoints 1–3 unchanged.
 
 #### Checkpoint 4 — Evaluation and demo freeze
 
@@ -684,6 +740,7 @@ Do not wait until all three tracks are finished. Merge or rebase frequently, but
 - **Birthday promotion leaks personal data:** store only the minimum eligibility fact and validity window needed for the scenario; do not place a birth date in receipts or logs.
 - **A cheap used listing weakens `new only`:** the core condition check remains authoritative; the additional feature may surface the rejected listing but cannot reinterpret the constraint.
 - **Stretch work threatens the core demo:** keep the extension feature-flagged, separate from core contracts, and removable without migrations or policy changes.
+- **Voice transcription error is treated as a hard constraint or as purchase consent:** the voice session may only propose a draft request/mandate; activation and mandate consent still require an explicit, non-voice UI confirmation, and the full transcript is stored for audit.
 
 ## 15. Brainstorming decisions
 
