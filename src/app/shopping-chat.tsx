@@ -7,6 +7,7 @@ import Image from "next/image";
 
 import type { SimulationState } from "@/application/simulation-state";
 import { formatMoney } from "@/app/format-money";
+import { BirthdayOpportunity } from "@/app/birthday-opportunity";
 import { chatAssistantSummary } from "@/application/chat-application";
 import type { PersistedChat } from "@/application/chat-history";
 import {
@@ -347,6 +348,11 @@ export function ShoppingChat({ initialChatId = null }: { initialChatId?: string 
           ) : null}
         </div>
 
+        <VoiceShoppingCompanion
+          disabled={pending !== null}
+          onBriefReview={reviewVoiceBrief}
+        />
+
         <div className="chat-messages" aria-live="polite">
           {messages.map((message) => (
             <div className={`chat-message ${message.role}`} key={message.id}>
@@ -414,6 +420,9 @@ export function ShoppingChat({ initialChatId = null }: { initialChatId?: string 
               </div>
             </div>
           ) : null}
+          {confirmedRequest && draft?.product.brand === "Nike" && draft.product.model === "Dunk Low" ? (
+            <BirthdayOpportunity requestId={confirmedRequest.id} />
+          ) : null}
           {monitoringState && (confirmedRequest || monitoringState.processedEvents.length > 0) ? (
             <div className="chat-message assistant monitor-message">
               <span>Monitoring update</span>
@@ -459,11 +468,6 @@ export function ShoppingChat({ initialChatId = null }: { initialChatId?: string 
           <div className="conversation-end" ref={conversationEndRef} />
         </div>
       </section>
-
-      <VoiceShoppingCompanion
-        disabled={pending !== null}
-        onBriefReview={reviewVoiceBrief}
-      />
 
       <form className="chat-composer" onSubmit={sendMessage}>
         <label className="sr-only" htmlFor="shopping-message">Message the shopping assistant</label>
