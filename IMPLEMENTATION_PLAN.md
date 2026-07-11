@@ -209,6 +209,8 @@ Use explicit precedence to avoid contradictory outcomes:
 
 `BUY_SIMULATED` requires every purchase-critical check to be `PASS`; `UNKNOWN` is never truthy.
 
+Coupon or reference-discount validity is not a hard requirement unless the confirmed shopping request explicitly says otherwise. An invalid, expired, excluded, or non-stackable saving is removed from the calculation; the evaluator must retain the failed verification result for the receipt, evaluate the no-coupon path, and decide from the resulting landed cost. A misleading discount claim alone must not reject an otherwise valid offer.
+
 ## 7. Landed-cost design
 
 Use integer minor units for monetary amounts. Use a decimal library for FX and percentage calculations; never use binary floating point as the authority.
@@ -671,7 +673,7 @@ Do not wait until all three tracks are finished. Merge or rebase frequently, but
 - **Money logic becomes legally broad:** explicitly scope destination and rules; version fixtures; label simplifications.
 - **Fuzzy match causes unsafe purchase:** require exact or seeded identity for version-one auto-buy; escalate unresolved contradictions.
 - **“Low stock” is undefined:** define it as a merchant evidence field with freshness, not persuasive listing text.
-- **Fake discount distracts from cap logic:** keep “discount is genuine” separate from “landed cost is acceptable”; decide whether genuine discount is a user condition.
+- **Fake discount distracts from cap logic:** keep “discount is genuine” separate from “landed cost is acceptable”; genuine discount is not a hard requirement by default, so remove invalid savings and decide from the no-coupon landed cost.
 - **Race between evaluation and purchase:** re-read offer, request, mandate, stock, coupon, and FX immediately before purchase in a serialized transaction.
 - **Audit text drifts from decision facts:** render receipts from reason codes and structured evidence; constrain any model-written prose to those fields.
 - **Alert spam:** fingerprint product + request + offer and alert only on first valid deal or a configured meaningful improvement.
@@ -696,7 +698,7 @@ These choices should be made before implementation begins:
 5. **Mandate semantics:** what exactly does “within EUR 5 of the target and stock is low” mean? The example is semantically ambiguous.
 6. **Destination scope:** use one Polish/EU destination and a deliberately simplified duty/VAT table, or demonstrate two destinations?
 7. **Marketplace policy:** does “no resellers” exclude all marketplaces, or only third-party sellers?
-8. **Discount policy:** is a fake reference discount always disqualifying, or only when the user requires a genuine discount?
+8. **Discount policy — decided:** fake reference discounts and invalid coupons are not disqualifying by default; remove invalid savings, retain the failed verification in the receipt, and decide from the final delivered price unless the user explicitly requires a genuine discount.
 9. **Notification rule:** one alert forever, one per merchant, or alert again after a meaningful landed-price improvement?
 10. **Evaluation target:** desired number of frozen scenarios and the acceptable escalation/recall trade-off, while keeping false buys at zero.
 

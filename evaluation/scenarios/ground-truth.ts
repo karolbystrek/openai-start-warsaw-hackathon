@@ -46,8 +46,8 @@ export const adversarialGroundTruth = [
   truth("wrong-audience-gs", "FAIL", false, "REJECT", "nike-dunk-low-gs-demo"),
   truth("wrong-condition-used", "FAIL", false, "REJECT"),
   truth("bait-price-other-variant", "FAIL", false, "REJECT", "nike-dunk-high-demo"),
-  ...["reseller-channel", "blocked-seller", "unavailable-stock", "stale-stock", "foreign-currency", "fx-crosses-cap", "delivery-over-cap", "duty-handling-over-cap", "invalid-coupon", "expired-coupon", "coupon-minimum-spend", "coupon-product-excluded", "coupon-non-stackable", "inflated-reference-price", "one-minor-above-cap"].map((id) => truth(id, "PASS", false, id === "stale-stock" ? "ESCALATE" : "REJECT")),
-  ...["low-stock", "exact-cap", "one-minor-below-cap"].map((id) => truth(id, "PASS", true, "ALERT")),
+  ...["reseller-channel", "blocked-seller", "unavailable-stock", "stale-stock", "foreign-currency", "fx-crosses-cap", "delivery-over-cap", "duty-handling-over-cap", "one-minor-above-cap"].map((id) => truth(id, "PASS", false, id === "stale-stock" ? "ESCALATE" : "REJECT")),
+  ...["low-stock", "exact-cap", "one-minor-below-cap", "invalid-coupon", "expired-coupon", "coupon-minimum-spend", "coupon-product-excluded", "coupon-non-stackable", "inflated-reference-price"].map((id) => truth(id, "PASS", true, "ALERT")),
   ScenarioGroundTruthSchema.parse({ scenarioId: "duplicate-listing-event", expected: [
     { eventId: "event-duplicate-listing-event-1", canonicalProductId: "nike-dunk-low-retro-white-black", match: "PASS", offerIsValidDeal: true, expectedOutcome: "ALERT" },
     { eventId: "event-duplicate-listing-event-2", canonicalProductId: "nike-dunk-low-retro-white-black", match: "PASS", offerIsValidDeal: true, expectedOutcome: "IGNORE" },
