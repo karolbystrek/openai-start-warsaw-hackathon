@@ -469,8 +469,8 @@ If no microphone or API key is available, the existing text-brief path works unc
 - [ ] Implement exact-identifier, seeded, normalized, attribute-level, and AI-assisted matching stages.
 - [ ] Persist provenance for every AI-derived matching claim.
 - [x] Implement the seeded simulator, virtual clock, event playback, pause, step, and reset.
-- [ ] Implement the authoritative offer-evaluation application service.
-  - Typed matching, verification, pricing, policy, receipt, idempotency, and atomic persistence orchestration is implemented in `CheckpointApplication`; loading the active request version from persistence and scoping decisions by request version/run still remain.
+- [x] Implement the authoritative offer-evaluation application service.
+  - Implemented in `CheckpointApplication` with persisted active-request lookup, request-version/run-scoped decisions, sequence-conditional idempotency, and atomic event/decision persistence.
 - [x] Generate concise and expanded receipts from the same decision record.
 - [ ] Build the request, offer timeline, verification, landed-cost, and decision UI.
   - Request, current event, requirement checks, landed cost, decision, and receipt views are implemented. A complete multi-event timeline remains.
@@ -635,8 +635,8 @@ Checklist:
 
 - [x] Scaffold Next.js, shared styling/components, SQLite/Drizzle, migrations, and repository adapters.
 - [ ] Implement request creation, interpreted-brief confirmation, activation, pause, and revocation flows.
-- [ ] Implement `evaluate-offer.ts` using typed matching, verification, pricing, policy, audit, and persistence interfaces.
-  - The application orchestration and atomic `saveEvaluation` port are implemented under `CheckpointApplication`; active-request lookup/version scoping must be completed before this item can be checked.
+- [x] Implement `evaluate-offer.ts` using typed matching, verification, pricing, policy, audit, and persistence interfaces.
+  - The use case is implemented under `CheckpointApplication` and `EvaluationRepository`; naming differs from the proposed filename, while the typed orchestration and persistence boundary are complete.
 - [ ] Implement serialized `recheck-and-buy.ts`, idempotent simulated-order storage, and mandate consumption.
 - [ ] Build request, simulator controls, event timeline, verification, landed-cost, decision, mandate, and receipt views.
   - Request, controls, current event, checks, landed cost, decision, and receipt are present. Full timeline and mandate/purchase views remain.
@@ -645,7 +645,7 @@ Checklist:
 - [ ] Replace stubs with real adapters at each convergence checkpoint and add a contract test for every replacement.
   - Real brief interpretation, staged matching, verification, landed-cost, policy, notification, and receipt services are integrated. Remaining fixture adapters are retained only for isolated checkpoint/manual use; automated contract tests remain prohibited by repository guidance.
 - [ ] Own the clean-state reset command, demo runbook, Playwright journey, and final rehearsal.
-  - Reset command and local run instructions exist and pass in a stopped, single-process environment. Multi-process reset safety, a committed Playwright journey, and final rehearsal remain.
+  - Reset command and local run instructions exist; reset is safe with running SQLite connections and passed multi-process smoke checks. A committed Playwright journey and final rehearsal remain.
 - [ ] **Track verification:** The app can run the full headline journey first with stubs and then with real services, without changing UI-facing contracts.
   - The headline journey passes with real Person A services and Person B brief/matching services. Purchase and mandate integration remains before the complete track can be checked.
 

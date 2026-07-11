@@ -20,7 +20,7 @@ function createCheckpointApplication(): CheckpointApplication {
     ? new OpenAIBriefInterpreter()
     : undefined;
   return new CheckpointApplication({
-    request: headlineRequest,
+    initialRequest: headlineRequest,
     runId: "headline-run",
     simulator: new FixtureSimulator(headlineEvents, headlineRequest.effectiveAt),
     repository: new DrizzleCheckpointRepository(db),

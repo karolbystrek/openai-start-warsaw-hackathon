@@ -1,10 +1,10 @@
 import { checkpointApplication } from "@/application/container";
+import { formatMoney } from "@/app/format-money";
+import { ShoppingChat } from "@/app/shopping-chat";
 import { BriefIntake } from "@/app/brief-intake";
 import { SimulatorControls } from "@/app/simulator-controls";
 
 export const dynamic = "force-dynamic";
-
-const formatMoney = (currency: string, minorUnits: number) => `${currency} ${(minorUnits / 100).toFixed(2)}`;
 
 const eventTitle = (event: Awaited<ReturnType<typeof checkpointApplication.getSimulationState>>["processedEvents"][number]) => {
   switch (event.type) {
@@ -16,7 +16,6 @@ const eventTitle = (event: Awaited<ReturnType<typeof checkpointApplication.getSi
     case "SELLER_CHANGED": return `Seller changed to ${event.status.toLowerCase()}`;
   }
 };
-
 export default async function Home() {
   const state = await checkpointApplication.getSimulationState();
   const decision = state.currentDecision;
@@ -37,6 +36,7 @@ export default async function Home() {
         </div>
       </header>
 
+      <ShoppingChat />
       <BriefIntake initialText={state.request.originalText} />
 
       <SimulatorControls

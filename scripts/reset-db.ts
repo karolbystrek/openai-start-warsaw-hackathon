@@ -1,12 +1,13 @@
-import { existsSync, rmSync } from "node:fs";
-import { resolve } from "node:path";
-
 import { createDatabase } from "../src/db/client";
+import { DrizzleCheckpointRepository } from "../src/db/repositories/drizzle-checkpoint-repository";
+import { headlineRequest } from "../src/simulator/scenarios/headline";
 
-const databasePath = resolve(process.env.DATABASE_URL ?? "./data/shopping-assistant.db");
-for (const path of [databasePath, `${databasePath}-shm`, `${databasePath}-wal`]) {
-  if (existsSync(path)) rmSync(path);
+async function reset() {
+  const { db, sqlite } = createDatabase();
+  const repository = new DrizzleCheckpointRepository(db);
+  await repository.resetToRequest(headlineRequest);
+  sqlite.close();
+  console.log("Reset and seeded the shopping-assistant database safely.");
 }
-const { sqlite } = createDatabase(databasePath);
-sqlite.close();
-console.log(`Reset ${databasePath}.`);
+
+void reset();
