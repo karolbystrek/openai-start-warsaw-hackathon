@@ -35,6 +35,23 @@ export const headlineGroundTruth = ScenarioGroundTruthSchema.parse({
   ],
 });
 
+export const presentationProductGroundTruth = [
+  ScenarioGroundTruthSchema.parse({
+    scenarioId: "vase-demo-run",
+    expected: [
+      { eventId: "vase-event-1", canonicalProductId: "iittala-aalto-vase-120-opal-demo", match: "FAIL", offerIsValidDeal: false, expectedOutcome: "REJECT" },
+      { eventId: "vase-event-2", canonicalProductId: "iittala-aalto-vase-160-clear", match: "PASS", offerIsValidDeal: true, expectedOutcome: "ALERT" },
+    ],
+  }),
+  ScenarioGroundTruthSchema.parse({
+    scenarioId: "macbook-demo-run",
+    expected: [
+      { eventId: "macbook-event-1", canonicalProductId: "apple-macbook-air-m2-13-8-256-demo", match: "FAIL", offerIsValidDeal: false, expectedOutcome: "REJECT" },
+      { eventId: "macbook-event-2", canonicalProductId: "apple-macbook-air-m3-13-16-512", match: "PASS", offerIsValidDeal: true, expectedOutcome: "ALERT" },
+    ],
+  }),
+] as const;
+
 export const adversarialGroundTruth = [
   truth("exact-identifier-valid", "PASS", true, "ALERT"),
   truth("seeded-alias-valid", "PASS", true, "ALERT"),

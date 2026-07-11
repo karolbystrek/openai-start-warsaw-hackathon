@@ -424,6 +424,8 @@ Optional contracts should contain:
 
 If no microphone or API key is available, the existing text-brief path works unchanged — this feature is fully optional and feature-flagged, like the opportunity horizon.
 
+Implementation checkpoint: the first bounded-audio slice is wired into the existing chat with OpenAI transcription, OpenAI speech generation, explicit AI-voice disclosure, transcript review before sending, and a server-side feature flag. A persistent `VoiceSession`/`VoiceTurn` audit model and low-latency Realtime streaming remain stretch work; this checkpoint must not be presented as the complete Realtime extension.
+
 ## 12. Delivery phases and exit criteria
 
 ### How to use this checklist

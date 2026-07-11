@@ -12,6 +12,7 @@ import { DeterministicLandedCostCalculator, headlineLandedCostRules } from "@/do
 import { DeterministicVerificationService } from "@/domain/verification";
 import { FixtureSimulator } from "@/simulator/fixture-simulator";
 import { headlineEvents, headlineRequest } from "@/simulator/scenarios/headline";
+import { presentationScenarioRequests, resolvePresentationScenario } from "@/simulator/scenarios";
 
 function createCheckpointApplication(): CheckpointApplication {
   const { db } = createDatabase();
@@ -31,6 +32,8 @@ function createCheckpointApplication(): CheckpointApplication {
     receipts: new DeterministicReceiptProjection(),
     briefInterpreter: new ResilientBriefInterpreter(deterministicBriefInterpreter, liveBriefInterpreter),
     briefProjector: new ConfirmedShoppingRequestProjector(),
+    scenarioRequests: presentationScenarioRequests,
+    scenarioResolver: resolvePresentationScenario,
   });
 }
 

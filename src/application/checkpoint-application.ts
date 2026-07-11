@@ -37,6 +37,12 @@ export interface CheckpointApplicationDependencies {
   receipts: ReceiptProjection;
   briefInterpreter: BriefInterpreter;
   briefProjector: ConfirmedBriefProjector;
+  scenarioRequests?: readonly ShoppingRequest[];
+  scenarioResolver?: (request: ShoppingRequest) => {
+    initialRequest: ShoppingRequest;
+    runId: string;
+    simulator: SimulatorControl;
+  };
 }
 
 export interface MandateConfirmation {
@@ -51,9 +57,15 @@ export type RequestLifecycleAction = "PAUSE" | "RESUME" | "REVOKE";
 export class CheckpointApplication {
   private mutationTail: Promise<void> = Promise.resolve();
   private activeRequest: ShoppingRequest;
+  private runtime: Pick<CheckpointApplicationDependencies, "initialRequest" | "runId" | "simulator">;
 
   constructor(private readonly dependencies: CheckpointApplicationDependencies) {
     this.activeRequest = dependencies.initialRequest;
+    this.runtime = {
+      initialRequest: dependencies.initialRequest,
+      runId: dependencies.runId,
+      simulator: dependencies.simulator,
+    };
   }
 
   private async serializeMutation<T>(operation: () => Promise<T>): Promise<T> {
@@ -72,7 +84,8 @@ export class CheckpointApplication {
   }
 
   async getSimulationState(): Promise<SimulationState> {
-    const { runId, simulator, repository, receipts } = this.dependencies;
+    const { repository, receipts } = this.dependencies;
+    const { runId, simulator } = this.runtime;
     const request = await this.loadCurrentRequest();
     const processedEvents = [...await repository.listEvents(runId)];
     recoverSimulator(simulator, processedEvents);
@@ -133,7 +146,7 @@ export class CheckpointApplication {
         || confirmation.maximumLandedCostMinor > requestCap) {
         throw new Error("Mandate price range must be non-negative, ordered, and no higher than the request cap.");
       }
-      const effectiveAt = this.dependencies.simulator.getState().virtualTime;
+      const effectiveAt = this.runtime.simulator.getState().virtualTime;
       const current = await this.dependencies.repository.getCurrentMandate(request.id, request.version);
       const expiresAt = new Date(Date.parse(effectiveAt) + 24 * 60 * 60 * 1000).toISOString();
       const mandate = MandateSchema.parse({
@@ -166,7 +179,7 @@ export class CheckpointApplication {
       const request = await this.loadCurrentRequest();
       const current = await this.dependencies.repository.getCurrentMandate(request.id, request.version);
       if (!current || current.status !== "ACTIVE") return this.getSimulationState();
-      const revokedAt = this.dependencies.simulator.getState().virtualTime;
+      const revokedAt = this.runtime.simulator.getState().virtualTime;
       await this.dependencies.repository.saveMandate(MandateSchema.parse({
         ...current,
         version: current.version + 1,
@@ -191,7 +204,7 @@ export class CheckpointApplication {
         || (action === "REVOKE" && ["ACTIVE", "PAUSED"].includes(current.lifecycle));
       if (!allowed) return this.getSimulationState();
 
-      const effectiveAt = this.dependencies.simulator.getState().virtualTime;
+      const effectiveAt = this.runtime.simulator.getState().virtualTime;
       const nextRequest = ShoppingRequestSchema.parse({
         ...current,
         version: current.version + 1,
@@ -223,7 +236,8 @@ export class CheckpointApplication {
   }
 
   private async stepSimulationOnce(expectedSequence: number): Promise<SimulationState> {
-    const { runId, simulator, repository, matching, verification, pricing, policy } = this.dependencies;
+    const { repository, matching, verification, pricing, policy } = this.dependencies;
+    const { runId, simulator } = this.runtime;
     const currentRequest = await this.loadCurrentRequest();
     if (currentRequest.lifecycle !== "ACTIVE") return this.getSimulationState();
     recoverSimulator(simulator, await repository.listEvents(runId));
@@ -292,7 +306,8 @@ export class CheckpointApplication {
   }
 
   private async resetSimulationOnce(): Promise<SimulationState> {
-    const { simulator, repository } = this.dependencies;
+    const { repository } = this.dependencies;
+    const { simulator } = this.runtime;
     const request = await this.loadCurrentRequest();
     simulator.reset();
     await repository.resetToRequest(request);
@@ -300,8 +315,15 @@ export class CheckpointApplication {
   }
 
   private async activateRequestOnce(request: ShoppingRequest): Promise<SimulationState> {
-    this.activeRequest = ShoppingRequestSchema.parse({ ...request, lifecycle: "ACTIVE" });
-    this.dependencies.simulator.reset();
+    const selected = this.dependencies.scenarioResolver?.(request) ?? this.runtime;
+    this.runtime = selected;
+    this.activeRequest = ShoppingRequestSchema.parse({
+      ...request,
+      id: selected.initialRequest.id,
+      lifecycle: "ACTIVE",
+      effectiveAt: selected.initialRequest.effectiveAt,
+    });
+    selected.simulator.reset();
     await this.dependencies.repository.resetToRequest(this.activeRequest);
     return this.getSimulationState();
   }
@@ -389,7 +411,8 @@ export class CheckpointApplication {
     observation: { offer: OfferSnapshot; evidence: EvidenceBundle },
     expectedSequence: number,
   ): Promise<boolean> {
-    const { repository, matching, verification, pricing, policy, runId } = this.dependencies;
+    const { repository, matching, verification, pricing, policy } = this.dependencies;
+    const { runId } = this.runtime;
     const evidence = await verification.verify(request, observation.offer, observation.evidence);
     const match = await matching.assess(request, observation.offer);
     const pricingSelection = pricing.select?.(
@@ -472,12 +495,24 @@ export class CheckpointApplication {
   }
 
   private async loadCurrentRequest(effectiveAt?: string): Promise<ShoppingRequest> {
-    const { initialRequest, repository } = this.dependencies;
+    const { initialRequest } = this.runtime;
+    const { repository, scenarioRequests, scenarioResolver } = this.dependencies;
     const fallback = this.activeRequest ?? initialRequest;
     const current = await repository.getCurrentRequest(fallback.id, effectiveAt);
     if (current) {
       this.activeRequest = current;
       return current;
+    }
+
+    if (scenarioResolver) {
+      for (const scenarioRequest of scenarioRequests ?? []) {
+        if (scenarioRequest.id === fallback.id) continue;
+        const persisted = await repository.getCurrentRequest(scenarioRequest.id, effectiveAt);
+        if (!persisted) continue;
+        this.runtime = scenarioResolver(persisted);
+        this.activeRequest = persisted;
+        return persisted;
+      }
     }
     await repository.saveRequest(fallback);
     const seeded = await repository.getCurrentRequest(fallback.id, effectiveAt);
