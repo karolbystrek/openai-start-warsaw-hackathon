@@ -9,13 +9,12 @@ Sources: [SOLIDGATE_CASE.md](SOLIDGATE_CASE.md) and [PROJECT_ROADMAP.md](PROJECT
 Build a deterministic, repeatable demonstration in which a user submits one natural-language shopping brief and the system:
 
 1. turns it into explicit hard constraints, preferences, and an optional purchase mandate;
-2. consumes a seeded stream of changing merchant offers, resale listings, promotion-calendar events, and stock changes;
-3. checks product identity, variant, condition, channel, stock, seller legitimacy, price evidence, coupon validity, and future-promotion eligibility;
+2. consumes a seeded stream of changing merchant offers;
+3. checks product identity, variant, stock, seller legitimacy, price evidence, and coupon validity;
 4. calculates the full landed cost;
-5. compares acting now with an evidence-backed opportunity horizon;
-6. chooses `IGNORE`, `REJECT`, `WAIT`, `ESCALATE`, `ALERT`, or `BUY_SIMULATED`;
-7. records an evidence-backed decision receipt and any scheduled recheck; and
-8. avoids duplicate or low-value notifications.
+5. chooses `IGNORE`, `REJECT`, `ESCALATE`, `ALERT`, or `BUY_SIMULATED`;
+6. records an evidence-backed decision receipt; and
+7. avoids duplicate or low-value notifications.
 
 The demo is successful when every action can be reproduced from stored inputs and rules, especially at the spending boundary.
 
@@ -29,7 +28,6 @@ The model may:
 - normalize messy listing text;
 - compare ambiguous titles and explain possible product equivalence;
 - identify missing or conflicting facts;
-- summarize evidence for a possible future promotion without treating it as guaranteed;
 - turn a structured decision record into concise user-facing wording.
 
 The model must not:
@@ -39,7 +37,6 @@ The model must not:
 - invent missing evidence;
 - relax a budget cap;
 - authorize a purchase;
-- invent a future discount, promotion eligibility, or stock forecast;
 - override an expired, revoked, or ambiguous mandate.
 
 Only the deterministic policy engine may emit `BUY_SIMULATED`.
@@ -89,7 +86,6 @@ src/
     pricing/             money, FX, coupons, duties, landed cost
     verification/        seller, stock, discount and evidence checks
     policy/              decision matrix and purchase authorization
-    opportunity/         future events, wait policy and recheck scheduling
     notifications/       alert deduplication and relevance rules
     audit/               decision record and receipt projection
   ai/
@@ -98,10 +94,9 @@ src/
     prompts/              versioned prompts and schemas
   simulator/
     engine.ts             seeded clock and event playback
-    scenarios/            deterministic merchant/FX/coupon/promotion fixtures
+    scenarios/            deterministic merchant/FX/coupon fixtures
   application/
     evaluate-offer.ts     orchestrates one evaluation
-    evaluate-opportunity.ts compares now versus waiting and schedules rechecks
     recheck-and-buy.ts    final transactional authorization
   db/
     schema.ts
@@ -127,8 +122,6 @@ Store the original text and a versioned, user-confirmable interpretation:
 - destination country and postal region;
 - budget currency and hard maximum landed cost;
 - soft preferences, kept separate from requirements;
-- timing policy: urgency, purchase deadline, maximum waiting horizon, and whether to optimize for first acceptable or best expected price;
-- allowed condition/channel fallbacks, kept separate from hard `new only`, reseller, and marketplace exclusions;
 - notification policy;
 - optional standing purchase mandate;
 - unresolved ambiguities;
@@ -158,36 +151,22 @@ The first version should support one item, quantity one, one successful simulate
 - delivery quote and destination coverage;
 - tax/duty inputs;
 - coupon claims and validation evidence;
-- promotion-calendar evidence, user eligibility, activation/expiry times, exclusions, and stacking rules;
 - stock state and quantity signal;
 - seller status and trust evidence;
 - reference price/history used to assess the discount;
 - observation time and source freshness;
 - scenario ground-truth labels, hidden from the runtime evaluator.
 
-### Future opportunity and scheduled recheck
-
-- event type: merchant sale, user-specific birthday promotion, coupon activation, expected markdown, stock change, or request deadline;
-- evidence class: `CONFIRMED`, `RECURRING`, `PREDICTED`, or `SPECULATIVE`;
-- source, observation time, freshness, activation window, and user eligibility evidence;
-- projected landed-cost breakdown with assumptions kept separate from current authoritative cost;
-- stock-risk evidence and conditions that cancel waiting;
-- next recheck time, trigger event, latest acceptable action time, and status;
-- deterministic scenario ground truth hidden from runtime evaluation.
-
-Predicted and speculative events may be displayed as context but never as guaranteed savings. A scheduled recheck requires a confirmed event or a versioned recurring fixture plus a user timing policy that permits waiting.
-
 ### Decision record
 
 - request version, offer snapshot, FX snapshot and policy version;
-- result: `IGNORE`, `REJECT`, `WAIT`, `ESCALATE`, `ALERT`, or `BUY_SIMULATED`;
+- result: `IGNORE`, `REJECT`, `ESCALATE`, `ALERT`, or `BUY_SIMULATED`;
 - one primary reason code;
 - per-requirement results: `PASS`, `FAIL`, `UNKNOWN`;
 - match evidence and verification results;
 - full landed-cost calculation;
 - mandate checks and consent version;
 - notification suppression result;
-- opportunity comparison, wait reason, next recheck, and cancellation conditions when applicable;
 - source timestamps and freshness;
 - AI provenance for AI-derived claims;
 - final action and immutable timestamp.
@@ -210,12 +189,10 @@ Evaluate every offer in a fixed order so decisions are reproducible and cheap fa
 10. Load the event-time FX rate and applicable duty/tax rule.
 11. Calculate authoritative landed cost.
 12. Compare landed cost with the hard cap using exact minor-unit arithmetic.
-13. Load eligible future-promotion events within the user's waiting horizon and classify their evidence.
-14. Compare acting now with waiting, including projected saving, stock risk, request deadline, and mandate validity.
-15. Determine notification eligibility and deduplicate equivalent alerts.
-16. Evaluate the active mandate.
-17. Emit and store the decision record and, for `WAIT`, an idempotent scheduled recheck.
-18. Before simulated purchase, reload current evidence and repeat steps 2–17 in one serialized operation; a future projection is never a substitute for current landed-cost calculation.
+13. Determine notification eligibility and deduplicate equivalent alerts.
+14. Evaluate the active mandate.
+15. Emit and store the decision record.
+16. Before simulated purchase, reload current evidence and repeat steps 2–15 in one serialized operation.
 
 ### Decision precedence
 
@@ -225,15 +202,12 @@ Use explicit precedence to avoid contradictory outcomes:
 2. hard product/condition/channel mismatch -> `REJECT`;
 3. unavailable stock -> `REJECT`;
 4. unknown purchase-critical fact -> `ESCALATE`;
-5. landed cost above cap with no eligible future opportunity -> `REJECT`;
-6. eligible evidence-backed future opportunity within the user's timing policy -> `WAIT` and schedule a recheck;
-7. valid current deal where the user's timing policy explicitly prefers waiting for a qualified opportunity -> `WAIT` only if the wait-risk rule passes;
-8. valid deal without applicable auto-buy consent -> `ALERT`;
-9. valid deal with fully applicable consent -> `BUY_SIMULATED`;
-10. already notified with no meaningful improvement -> `IGNORE`.
+5. landed cost above cap -> `REJECT`;
+6. valid deal without applicable auto-buy consent -> `ALERT`;
+7. valid deal with fully applicable consent -> `BUY_SIMULATED`;
+8. already notified with no meaningful improvement -> `IGNORE`.
 
 `BUY_SIMULATED` requires every purchase-critical check to be `PASS`; `UNKNOWN` is never truthy.
-`WAIT` requires a future event identifier, evidence class, scheduled recheck, deadline, and cancellation conditions. It cannot weaken a hard condition or override a mandate that says to buy the first qualifying offer.
 
 ## 7. Landed-cost design
 
@@ -292,10 +266,9 @@ Each scenario should contain:
 - canonical catalog entries and seeded aliases;
 - merchant/seller profiles;
 - FX, coupon and duty rule snapshots;
-- promotion calendars and eligibility fixtures, including birthday offers and activation/expiry windows;
-- time-ordered listing, stock, price, coupon, seller, promotion, and scheduled-recheck events;
+- time-ordered listing, stock, price, coupon and seller events;
 - hidden ground-truth validity labels;
-- expected decisions, reason codes, scheduled rechecks, and whether waiting was beneficial or harmful in hindsight.
+- expected decisions and reason codes.
 
 The runner needs `play`, `pause`, `step`, `reset`, and speed control. The demo UI should expose the virtual time and current event so a judge can see why a recalculation happened.
 
@@ -303,14 +276,9 @@ Minimum headline scenario:
 
 1. wrong size/model looks cheap -> reject;
 2. GBP offer looks cheap but delivery/duty pushes it above EUR 80 -> reject;
-3. a Vinted-style used offer looks dramatically cheaper -> reject because `new only` is hard, or escalate only in a separate scenario where used is an allowed fallback;
-4. a confirmed birthday promotion activates in 20 virtual days -> emit `WAIT` with a scheduled recheck, eligibility evidence, projected saving, and cancellation conditions;
-5. stock falls before promotion day -> re-evaluate whether the user's timing policy still permits waiting;
-6. coupon activates but is expired, excluded, or non-stackable -> reject or recalculate above cap;
-7. a valid EUR 76.40 landed offer arrives -> alert or buy according to consent;
-8. optional twist: the pre-purchase recheck sees a new stock or FX event and proves that the final action uses current evidence.
-
-The headline seed must be fully mocked and reproducible. It should demonstrate both a beneficial wait and at least one counterfactual or alternate seed where waiting would lose the current deal, so the policy is evaluated rather than presented as a universally correct choice.
+3. coupon is expired or inapplicable -> reject or recalculate above cap;
+4. valid EUR 76.40 landed offer arrives -> alert or buy according to consent;
+5. optional twist: stock becomes low, exercising a precisely defined mandate condition.
 
 ## 10. User experience
 
@@ -319,7 +287,6 @@ The headline seed must be fully mocked and reproducible. It should demonstrate b
 - **Request card:** original brief beside interpreted hard requirements, preferences, ambiguities, and consent.
 - **Simulation controls:** selected scenario, virtual time, play/step/reset.
 - **Offer timeline:** new evidence and recalculations across merchants.
-- **Opportunity horizon:** current best action, confirmed upcoming events, projected landed cost, evidence class, stock risk, and next recheck.
 - **Decision panel:** current result and primary reason.
 - **Landed-cost panel:** line-item arithmetic with FX and fee provenance.
 - **Verification panel:** product, variant, seller, stock, coupon, and discount checks.
@@ -331,8 +298,6 @@ The headline seed must be fully mocked and reproducible. It should demonstrate b
 
 - Require explicit confirmation of the interpreted brief before activating monitoring if any purchase consent is present.
 - Make consent visually distinct from ordinary preferences.
-- Make current authoritative prices visually distinct from projected future prices and label every projection with its assumptions.
-- Allow the user to cancel a scheduled wait, change the deadline, or switch to `buy first qualifying offer` without changing unrelated product constraints.
 - Show revocation immediately and ensure all later evaluations use the new version.
 - Never display “bought” before the pre-purchase recheck commits successfully.
 
@@ -355,22 +320,63 @@ At minimum cover:
 - mandate expired, revoked, wrong request version, already consumed, and condition unknown;
 - duplicate listing events and meaningful price improvements;
 - stale evidence between alert and purchase recheck.
-- confirmed, recurring, predicted, speculative, cancelled, and rescheduled future-promotion events;
-- birthday offer eligibility, activation, expiry, minimum spend, product exclusions, privacy-safe user evidence, and coupon stacking;
-- a qualifying current offer versus a better future offer under `buy now`, `first qualifying`, and `best before deadline` timing policies;
-- used Vinted-style listings under hard `new only`, hard `no resellers`, and explicitly allowed used fallback;
-- stock stable, stock falling, stock unknown, and stale stock evidence during a 20-day waiting window;
-- mandate expiry or revocation before the scheduled promotion and a changed price/FX/fee at recheck time;
-- beneficial waits, harmful waits that miss a valid deal, and rechecks that correctly cancel waiting.
 
 Required metrics:
 
 - **Strike precision:** valid alerts and purchases / all alerts and purchases.
 - **False-buy rate:** invalid purchases / all purchases; report zero purchases separately rather than treating it as success.
 
-Also report recall/missed-deal rate, unnecessary escalation rate, duplicate-alert rate, cost-calculation exactness, explanation completeness, scheduled-recheck accuracy, and **harmful-wait rate**: waits that caused the system to miss a valid current deal without obtaining an equal or better valid deal within the user's deadline.
+Also report recall/missed-deal rate, unnecessary escalation rate, duplicate-alert rate, cost-calculation exactness, and explanation completeness.
 
 The most important test oracle is scenario ground truth, not another model's opinion.
+
+## Additional feature — Time-aware opportunity planning
+
+This is a stretch feature and must remain outside the authoritative core evaluation pipeline. Build it only after the complete current-offer path reaches its exit verification. The application must be able to disable or remove this feature without changing core contracts, decisions, purchase authorization, or the headline scenario.
+
+The extension adds a post-evaluation opportunity layer that can recommend continued monitoring and schedule a recheck. It does not add `WAIT` to the core decision enum. A core `DecisionRecord` remains authoritative; a separate `OpportunityRecommendation` explains a possible future saving and may create a `ScheduledRecheck`. It cannot suppress an `ALERT`, delay `BUY_SIMULATED` under a valid first-qualifying-offer mandate, or authorize a purchase.
+
+### Optional modules and contracts
+
+```text
+src/additional/opportunity/
+  contracts.ts           FutureOpportunity, OpportunityRecommendation, ScheduledRecheck
+  evaluate.ts            compares a stored core decision with mocked future events
+  scheduler.ts           idempotent virtual-time rechecks
+src/simulator/scenarios/additional/
+  patience.ts            birthday, resale, promotion and stock-risk fixtures
+```
+
+Optional contracts should contain:
+
+- user timing preference: urgency, deadline, maximum waiting horizon, and whether suggestions are enabled;
+- event type: merchant sale, user-specific birthday promotion, coupon activation, expected markdown, stock change, or deadline;
+- evidence class: `CONFIRMED`, `RECURRING`, `PREDICTED`, or `SPECULATIVE`;
+- source, observation time, freshness, activation window, eligibility, exclusions, and coupon stacking;
+- projected landed-cost breakdown, visibly separate from the current authoritative cost;
+- stock-risk evidence, cancellation conditions, next recheck, and latest acceptable action time.
+
+Only confirmed or versioned recurring mocked events may schedule a recheck. Predicted and speculative events may be shown as context but never as guaranteed savings. Birthday eligibility should store only the minimum required fact and window, not a birth date in receipts or logs.
+
+### Optional scenario and UX
+
+The additional scenario may show:
+
+1. a current valid or near-target offer;
+2. a much cheaper Vinted-style used listing rejected by the core `new only` rule;
+3. a confirmed birthday promotion activating in 20 virtual days;
+4. an opportunity recommendation with projected saving and scheduled recheck;
+5. a stock drop that cancels or changes the recommendation;
+6. re-evaluation on promotion day using current price, coupon, FX, stock, request, and mandate evidence;
+7. an alternate seed where waiting would have lost the valid current deal.
+
+The UI may add an **Opportunity horizon** panel showing current versus projected cost, evidence class, stock risk, and next recheck. Projections must look different from authoritative prices. The user may cancel the scheduled recheck, but this control must not change unrelated core constraints or consent.
+
+### Optional evaluation
+
+Cover confirmed, recurring, predicted, speculative, cancelled, and rescheduled promotions; birthday eligibility and stacking; a 20-day waiting window; stable, falling, unknown, and stale stock; mandate expiry before recheck; and beneficial versus harmful waits.
+
+Report scheduled-recheck accuracy and **harmful-wait rate**: recommendations that would cause the user to miss a valid current deal without obtaining an equal or better valid deal within the stated deadline. These extension metrics supplement, but never replace, strike precision and false-buy rate.
 
 ## 12. Delivery phases and exit criteria
 
@@ -389,7 +395,6 @@ The most important test oracle is scenario ground truth, not another model's opi
 - [ ] Define and document the simplified tax and duty rules.
 - [ ] Define the product-match policy for alerts and automatic purchases.
 - [ ] Define mandate creation, expiry, revocation, and consumption semantics.
-- [ ] Define timing policies, future-event evidence classes, scheduled-recheck semantics, and the harmful-wait metric.
 - [ ] Scaffold the application with strict TypeScript settings.
 - [ ] Configure shared Zod schemas, the test runner, and the database.
 - [ ] Define and validate the deterministic scenario-fixture format.
@@ -403,9 +408,8 @@ The most important test oracle is scenario ground truth, not another model's opi
 - [ ] Implement the scoped delivery, tax, duty, and handling-fee calculation.
 - [ ] Implement hard-requirement evaluation with `PASS`, `FAIL`, and `UNKNOWN` results.
 - [ ] Implement the decision outcomes, precedence rules, and stable reason codes.
-- [ ] Implement pure opportunity comparison, `WAIT` eligibility, cancellation conditions, and idempotent recheck scheduling contracts.
 - [ ] Implement the structured, immutable decision record.
-- [ ] Add unit tests for exact-cap, below-cap, above-cap, rounding, invalid-coupon, unknown-evidence, future-event classification, stock-risk, and waiting-horizon boundaries.
+- [ ] Add unit tests for exact-cap, below-cap, above-cap, rounding, invalid-coupon, and unknown-evidence boundaries.
 - [ ] **Exit verification:** Deterministic tests prove that no above-cap offer or offer with an unknown purchase-critical fact can produce `BUY_SIMULATED`.
 
 ### Phase 2 — Complete alert journey
@@ -416,11 +420,9 @@ The most important test oracle is scenario ground truth, not another model's opi
 - [ ] Implement exact-identifier, seeded, normalized, attribute-level, and AI-assisted matching stages.
 - [ ] Persist provenance for every AI-derived matching claim.
 - [ ] Implement the seeded simulator, virtual clock, event playback, pause, step, and reset.
-- [ ] Add mocked promotion-calendar, birthday-eligibility, resale-listing, scheduled-recheck, and stock-change events.
 - [ ] Implement the authoritative offer-evaluation application service.
-- [ ] Implement opportunity comparison and persisted scheduled rechecks without treating projected prices as authoritative.
 - [ ] Generate concise and expanded receipts from the same decision record.
-- [ ] Build the request, offer timeline, opportunity horizon, verification, landed-cost, and decision UI.
+- [ ] Build the request, offer timeline, verification, landed-cost, and decision UI.
 - [ ] Add the complete headline alert scenario and its automated scenario test.
 - [ ] **Exit verification:** Run the headline scenario to a justified `ALERT` and trace every displayed claim to stored facts and evidence.
 
@@ -442,19 +444,30 @@ The most important test oracle is scenario ground truth, not another model's opi
 - [ ] Add unavailable-stock, low-stock, and stale-evidence scenarios.
 - [ ] Add FX, delivery, duty, and landed-cost boundary scenarios.
 - [ ] Add seller-legitimacy and marketplace/reseller scenarios.
-- [ ] Add used Vinted-style offer scenarios under hard and fallback condition policies.
-- [ ] Add future-promotion, birthday-offer, 20-day wait, stock-risk, cancelled-promotion, and mandate-expiry scenarios.
 - [ ] Implement notification fingerprints and meaningful-improvement deduplication.
 - [ ] Ensure runtime evaluation cannot access scenario ground-truth labels.
 - [ ] Freeze at least 25 adversarial and boundary scenarios.
-- [ ] Calculate strike precision, false-buy rate, purchase count, recall, escalation rate, duplicate-alert rate, cost-calculation exactness, scheduled-recheck accuracy, and harmful-wait rate.
-- [ ] Add regression tests for every discovered false alert, false purchase, missed deal, harmful wait, missed recheck, or incorrect escalation.
-- [ ] **Exit verification:** Run the frozen evaluation set and meet the agreed metric targets, including a 0% false-buy rate with a non-zero purchase count and the agreed harmful-wait-rate target.
+- [ ] Calculate strike precision, false-buy rate, purchase count, recall, escalation rate, duplicate-alert rate, and cost-calculation exactness.
+- [ ] Add regression tests for every discovered false alert, false purchase, missed deal, or incorrect escalation.
+- [ ] **Exit verification:** Run the frozen evaluation set and meet the agreed metric targets, including a 0% false-buy rate with a non-zero purchase count.
+
+### Optional stretch track — Time-aware opportunity planning
+
+These tasks implement the additional feature described above. They do not block any phase exit verification and should begin only after Phase 2's complete alert journey is stable.
+
+- [ ] Freeze separate `FutureOpportunity`, `OpportunityRecommendation`, and `ScheduledRecheck` contracts without changing the core decision enum.
+- [ ] Define timing preferences, future-event evidence classes, cancellation rules, and the harmful-wait metric.
+- [ ] Add mocked promotion-calendar, birthday-eligibility, Vinted-style used-listing, scheduled-recheck, and stock-change events.
+- [ ] Implement post-evaluation opportunity comparison and idempotent scheduled rechecks.
+- [ ] Build the optional opportunity-horizon panel with a strong current-versus-projected visual distinction.
+- [ ] Add beneficial-wait, harmful-wait, 20-day birthday-promotion, stock-risk, cancelled-promotion, and mandate-expiry scenarios.
+- [ ] Report scheduled-recheck accuracy and harmful-wait rate separately from core metrics.
+- [ ] **Optional verification:** Disable the feature and prove the core journey is unchanged; enable it and run the deterministic 20-day extension without allowing it to authorize or delay a purchase.
 
 ### Phase 5 — Demo polish
 
-- [ ] Finalize scenario selection, virtual-time controls, visible event progression, and the 20-day promotion fast-forward experience.
-- [ ] Polish visual hierarchy for requirements, evidence, current versus projected costs, timing decisions, and consent.
+- [ ] Finalize scenario selection, virtual-time controls, and visible event progression.
+- [ ] Polish visual hierarchy for requirements, evidence, decisions, costs, and consent.
 - [ ] Verify concise receipts at a glance and expanded audit details on demand.
 - [ ] Build the evaluation dashboard with metric definitions and per-scenario failures.
 - [ ] Add a reliable clean-state reset command and documented demo runbook.
@@ -471,7 +484,7 @@ The three tracks should communicate through frozen Zod contracts and fixtures, n
 
 Time-box this checkpoint to the beginning of the project. Agree on names and shapes before dividing into separate branches or worktrees.
 
-- [ ] Freeze the first versions of `ShoppingRequest`, `Mandate`, `OfferSnapshot`, `EvidenceBundle`, `MatchAssessment`, `LandedCost`, `FutureOpportunity`, `ScheduledRecheck`, `DecisionRecord`, `SimulationEvent`, and `SimulatedOrder` as shared Zod schemas and inferred TypeScript types.
+- [ ] Freeze the first versions of `ShoppingRequest`, `Mandate`, `OfferSnapshot`, `EvidenceBundle`, `MatchAssessment`, `LandedCost`, `DecisionRecord`, `SimulationEvent`, and `SimulatedOrder` as shared Zod schemas and inferred TypeScript types.
 - [ ] Agree on stable identifiers, timestamps, currency representation, `PASS`/`FAIL`/`UNKNOWN`, decision outcomes, and primary reason codes.
 - [ ] Create one valid headline fixture and one deliberately rejected fixture that conform to the contracts.
 - [ ] Create typed interfaces for the services each track supplies, with temporary in-memory stubs where implementation is not ready.
@@ -489,7 +502,6 @@ src/domain/contracts/
 src/domain/pricing/
 src/domain/verification/
 src/domain/policy/
-src/domain/opportunity/
 src/domain/notifications/
 src/domain/audit/
 tests/unit/
@@ -500,14 +512,13 @@ Checklist:
 
 - [ ] Implement money, rounding, FX, delivery, tax, duty, fees, and coupon rules.
 - [ ] Implement product-requirement, seller, stock, discount, evidence-freshness, and landed-cost checks.
-- [ ] Implement deterministic decision precedence for `IGNORE`, `REJECT`, `WAIT`, `ESCALATE`, `ALERT`, and `BUY_SIMULATED` eligibility.
-- [ ] Implement pure now-versus-wait comparison, future-event evidence rules, stock-risk gates, and scheduled-recheck eligibility.
+- [ ] Implement deterministic decision precedence for `IGNORE`, `REJECT`, `ESCALATE`, `ALERT`, and `BUY_SIMULATED` eligibility.
 - [ ] Implement mandate scope validation and the pure pre-purchase authorization function.
 - [ ] Implement notification fingerprints and meaningful-improvement rules.
 - [ ] Implement the immutable decision record and deterministic concise/expanded receipt projections.
-- [ ] Build boundary-heavy unit tests and the evaluation metric calculator, including scheduled-recheck accuracy and harmful-wait rate.
+- [ ] Build boundary-heavy unit tests and the evaluation metric calculator.
 - [ ] Publish pure test fixtures and service functions that Persons B and C can consume.
-- [ ] **Track verification:** Domain tests prove that above-cap, hard-mismatch, unavailable, stale-critical, and `UNKNOWN` purchase-critical offers never become purchase-eligible, and that `WAIT` cannot be emitted without a qualified future event and scheduled recheck.
+- [ ] **Track verification:** Domain tests prove that above-cap, hard-mismatch, unavailable, stale-critical, and `UNKNOWN` purchase-critical offers never become purchase-eligible.
 
 Person A can begin immediately after the shared contract checkpoint using handcrafted offer and evidence fixtures.
 
@@ -534,9 +545,8 @@ Checklist:
 - [ ] Persist prompt/schema/model versions and evidence provenance in every AI-derived `MatchAssessment`.
 - [ ] Add deterministic cached outputs or a non-AI fallback for the headline demo.
 - [ ] Implement the seeded virtual clock and play, pause, step, reset, and speed controls as services.
-- [ ] Model promotion calendars, birthday eligibility, used resale listings, coupon activation, stock changes, and recheck-trigger events as typed fixtures.
-- [ ] Author the headline event stream and at least 25 adversarial scenario fixtures with hidden ground truth, including beneficial and harmful waiting cases.
-- [ ] Ensure runtime outputs contain only evidence, future-opportunity facts, and match assessments, never `WAIT`, `ALERT`, or `BUY_SIMULATED` decisions.
+- [ ] Author the headline event stream and at least 25 adversarial scenario fixtures with hidden ground truth.
+- [ ] Ensure runtime outputs contain only evidence and match assessments, never `ALERT` or `BUY_SIMULATED` decisions.
 - [ ] Publish a fixture-backed simulator adapter and matching service for Person C.
 - [ ] **Track verification:** The same seed produces the same event sequence, and matching tests distinguish exact, fuzzy, contradictory, and unresolved identities with traceable evidence.
 
@@ -560,9 +570,8 @@ Checklist:
 - [ ] Scaffold Next.js, shared styling/components, SQLite/Drizzle, migrations, and repository adapters.
 - [ ] Implement request creation, interpreted-brief confirmation, activation, pause, and revocation flows.
 - [ ] Implement `evaluate-offer.ts` using typed matching, verification, pricing, policy, audit, and persistence interfaces.
-- [ ] Implement `evaluate-opportunity.ts` and idempotent scheduled-recheck persistence using Person A's policy and Person B's virtual-time events.
 - [ ] Implement serialized `recheck-and-buy.ts`, idempotent simulated-order storage, and mandate consumption.
-- [ ] Build request, simulator controls, event timeline, opportunity horizon, verification, landed-cost, decision, mandate, and receipt views.
+- [ ] Build request, simulator controls, event timeline, verification, landed-cost, decision, mandate, and receipt views.
 - [ ] Build the evaluation dashboard from Person A's metrics and Person B's ground-truth scenarios.
 - [ ] Maintain in-memory stubs for unavailable Person A or B services so UI and orchestration work can continue asynchronously.
 - [ ] Replace stubs with real adapters at each convergence checkpoint and add a contract test for every replacement.
@@ -570,6 +579,15 @@ Checklist:
 - [ ] **Track verification:** The app can run the full headline journey first with stubs and then with real services, without changing UI-facing contracts.
 
 Person C can begin immediately after the shared contract checkpoint using one fixed event fixture, one fixed decision record, and in-memory repositories.
+
+### Optional feature ownership — after the core alert journey
+
+If the team activates the time-aware additional feature:
+
+- Person A owns the pure recommendation and harmful-wait evaluation rules under `src/additional/opportunity/`; these rules cannot authorize purchases or alter the core decision enum.
+- Person B owns mocked promotion, birthday, resale, stock-risk, and virtual-time recheck fixtures under the additional scenario directory.
+- Person C owns optional persistence, scheduler wiring, feature flag, and the opportunity-horizon UI.
+- All three owners must prove that disabling the feature leaves core contracts, scenario outputs, and the headline demo unchanged.
 
 ### Convergence checkpoints
 
@@ -596,12 +614,12 @@ Do not wait until all three tracks are finished. Merge or rebase frequently, but
 - [ ] Integrate transaction, revocation, idempotency, and purchase UI from Person C.
 - [ ] **Checkpoint verification:** The valid mandate buys once; expired, revoked, consumed, changed, or uncertain conditions block purchase.
 
-#### Checkpoint 3a — Time-aware opportunity slice
+#### Optional checkpoint — Time-aware opportunity slice
 
 - [ ] Person B emits a confirmed future promotion, a used resale listing, a stock drop, and the scheduled virtual-time trigger.
-- [ ] Person A produces `WAIT` only when the request timing policy and risk rules permit it, and rejects the hard condition mismatch.
+- [ ] Person A produces a separate opportunity recommendation only when timing and risk rules permit it; the core decision still rejects any hard condition mismatch.
 - [ ] Person C persists the scheduled recheck and shows current versus projected cost without presenting the projection as guaranteed.
-- [ ] **Checkpoint verification:** The same deterministic timeline waits, re-evaluates after 20 virtual days, and then alerts or buys from current evidence; an alternate seed proves that unsafe waiting is blocked or cancelled.
+- [ ] **Optional verification:** The same deterministic timeline re-evaluates after 20 virtual days using current evidence; an alternate seed identifies a harmful wait, and disabling the extension leaves Checkpoints 1–3 unchanged.
 
 #### Checkpoint 4 — Evaluation and demo freeze
 
@@ -627,15 +645,19 @@ Do not wait until all three tracks are finished. Merge or rebase frequently, but
 - **Money logic becomes legally broad:** explicitly scope destination and rules; version fixtures; label simplifications.
 - **Fuzzy match causes unsafe purchase:** require exact or seeded identity for version-one auto-buy; escalate unresolved contradictions.
 - **“Low stock” is undefined:** define it as a merchant evidence field with freshness, not persuasive listing text.
-- **A future promotion is treated as guaranteed:** classify evidence explicitly; keep projected costs separate from authoritative landed cost; require current re-evaluation at activation time.
-- **Waiting loses a valid deal:** honor the user's timing policy, cap the waiting horizon, gate on fresh stock evidence, define cancellation conditions, and measure harmful-wait rate.
-- **Birthday promotion leaks personal data:** store only the minimum eligibility fact and validity window needed for the scenario; do not place a birth date in decision receipts or logs.
-- **A cheap used listing weakens `new only`:** represent condition and sales channel as independent hard checks; reject rather than reinterpret unless the user explicitly configured a fallback.
 - **Fake discount distracts from cap logic:** keep “discount is genuine” separate from “landed cost is acceptable”; decide whether genuine discount is a user condition.
 - **Race between evaluation and purchase:** re-read offer, request, mandate, stock, coupon, and FX immediately before purchase in a serialized transaction.
 - **Audit text drifts from decision facts:** render receipts from reason codes and structured evidence; constrain any model-written prose to those fields.
 - **Alert spam:** fingerprint product + request + offer and alert only on first valid deal or a configured meaningful improvement.
 - **Too much infrastructure:** keep one app, one database, and one simulator process until the core demo is proven.
+
+### Additional-feature risks
+
+- **A future promotion is treated as guaranteed:** classify evidence explicitly; keep projected costs separate from authoritative landed cost; require current re-evaluation at activation time.
+- **Waiting loses a valid deal:** cap the optional waiting horizon, use fresh stock evidence, define cancellation conditions, and measure harmful-wait rate.
+- **Birthday promotion leaks personal data:** store only the minimum eligibility fact and validity window needed for the scenario; do not place a birth date in receipts or logs.
+- **A cheap used listing weakens `new only`:** the core condition check remains authoritative; the additional feature may surface the rejected listing but cannot reinterpret the constraint.
+- **Stretch work threatens the core demo:** keep the extension feature-flagged, separate from core contracts, and removable without migrations or policy changes.
 
 ## 15. Brainstorming decisions
 
@@ -650,11 +672,17 @@ These choices should be made before implementation begins:
 7. **Marketplace policy:** does “no resellers” exclude all marketplaces, or only third-party sellers?
 8. **Discount policy:** is a fake reference discount always disqualifying, or only when the user requires a genuine discount?
 9. **Notification rule:** one alert forever, one per merchant, or alert again after a meaningful landed-price improvement?
-10. **Timing policy:** should the assistant buy the first qualifying offer, seek the best expected price before a deadline, or wait only for confirmed promotions?
-11. **Future evidence:** which event classes may produce `WAIT`, how long may the system wait, and what stock evidence cancels waiting?
-12. **Birthday offers:** how is eligibility represented without retaining unnecessary personal data, and are user-specific coupons allowed to stack?
-13. **Used fallback:** may Vinted-style used offers ever trigger an escalation, or must `new only` reject them silently?
-14. **Evaluation target:** desired number of frozen scenarios and the acceptable escalation/recall/harmful-wait trade-off, while keeping false buys at zero.
+10. **Evaluation target:** desired number of frozen scenarios and the acceptable escalation/recall trade-off, while keeping false buys at zero.
+
+### Additional-feature decisions
+
+Decide these only if the team has capacity after the core alert journey is stable:
+
+1. **Timing preference:** may the extension suggest waiting for the best expected price before a deadline, or only schedule confirmed promotion rechecks?
+2. **Future evidence:** which event classes may create a recheck, how long may it wait, and what stock evidence cancels the recommendation?
+3. **Birthday offers:** how is eligibility represented without retaining unnecessary personal data, and may user-specific coupons stack?
+4. **Used listing presentation:** should a rejected Vinted-style offer be shown as an explanatory comparison, or omitted after the core `new only` rejection?
+5. **Extension target:** acceptable harmful-wait rate and scheduled-recheck accuracy without changing core metric targets.
 
 ## 16. Recommended first decisions
 
@@ -666,7 +694,15 @@ Unless the team has contrary constraints, start with:
 - exact/seeded identity required for auto-buy, AI-assisted matches eligible for alert or escalation only;
 - explicit `<= cap` acceptance with decimal/intermediate rounding rules frozen in tests;
 - consent toggle in the demo so the same valid offer can visibly lead to `ALERT` or `BUY_SIMULATED`;
-- a `best before deadline` timing policy with `WAIT` limited to confirmed or versioned recurring events and a mandatory scheduled recheck;
-- a mocked 20-day birthday-promotion arc with a used Vinted-style interruption and a stock-risk change;
 - at least 25 frozen adversarial scenarios, including dense boundary cases;
-- false-buy target of 0%, reported together with purchase count, recall, scheduled-recheck accuracy, and harmful-wait rate.
+- false-buy target of 0%, reported together with purchase count and recall.
+
+### Optional extension defaults
+
+Only after the core recommendations above are implemented and verified:
+
+- enable the opportunity layer behind a feature flag;
+- use `best before deadline` only as a suggestion policy, not a core purchase decision;
+- limit scheduled rechecks to confirmed or versioned recurring events;
+- add the mocked 20-day birthday-promotion arc with a used Vinted-style interruption and stock-risk change;
+- report scheduled-recheck accuracy and harmful-wait rate separately from core metrics.
