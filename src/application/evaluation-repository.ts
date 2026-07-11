@@ -40,7 +40,7 @@ export function assertEvaluationCorrelation(
     ["offer", decision.offer.id, offerId],
     ["evidence", decision.evidence.offerId, offerId],
     ["match", decision.match.offerId, offerId],
-    ["landed cost", decision.landedCost.offerId, offerId],
+    ...(decision.landedCost ? [["landed cost", decision.landedCost.offerId, offerId] as const] : []),
     ["request", decision.requestId, request.id],
     ["request version", decision.requestVersion, request.version],
   ] as const;

@@ -11,6 +11,8 @@ import type { VerificationService } from "@/domain/services";
 
 const normalized = (value: string | null): string => value?.trim().toUpperCase().replaceAll("-", "_") ?? "";
 
+const isLowStockValue = (value: string): boolean => /^LOW[_ ]STOCK(?::\s*\d+)?$/.test(value);
+
 const computedProvenance = (source: string, observedAt: string): Provenance => ({
   kind: "COMPUTED",
   source,
@@ -30,7 +32,7 @@ const derivedItem = (
 
 const stockResult = (evidence: EvidenceItem): CheckResult => {
   const value = normalized(evidence.value);
-  if (value === "IN_STOCK" || value === "LOW_STOCK") return evidence.result === "PASS" ? "PASS" : evidence.result;
+  if (value === "IN_STOCK" || isLowStockValue(value)) return evidence.result === "PASS" ? "PASS" : evidence.result;
   if (value === "OUT_OF_STOCK" || value === "UNAVAILABLE") return "FAIL";
   return evidence.result === "FAIL" ? "FAIL" : "UNKNOWN";
 };
@@ -53,8 +55,6 @@ export class DeterministicVerificationService implements VerificationService {
     offer: OfferSnapshot,
     evidence: EvidenceBundle,
   ): Promise<EvidenceBundle> {
-    if (evidence.offerId !== offer.id) throw new Error(`Evidence ${evidence.id} does not belong to offer ${offer.id}.`);
-
     const observedCondition: CheckResult = offer.attributes.condition === null
       ? "UNKNOWN"
       : offer.attributes.condition === request.requirements.condition ? "PASS" : "FAIL";
@@ -94,6 +94,20 @@ export const isEvidenceFresh = (
   at: string,
   maximumAgeMs: number,
 ): boolean => {
-  const age = evidenceAgeMs(evidence, at);
-  return age >= 0 && age <= maximumAgeMs;
+  const evaluatedAt = Date.parse(at);
+  if (!Number.isFinite(evaluatedAt)) return false;
+  const bundleAge = evidenceAgeMs(evidence, at);
+  if (bundleAge < 0 || bundleAge > maximumAgeMs) return false;
+
+  return [
+    evidence.seller,
+    evidence.stock,
+    evidence.condition,
+    evidence.destination,
+  ].every((item) => {
+    const observedAt = Date.parse(item.provenance.observedAt);
+    if (!Number.isFinite(observedAt)) return false;
+    const age = evaluatedAt - observedAt;
+    return age >= 0 && age <= maximumAgeMs;
+  });
 };

@@ -116,7 +116,10 @@ export class CheckpointApplication {
         });
         const match = await matching.assess(request, event.offer);
         const evidence = await verification.verify(request, event.offer, event.evidence);
-        const landedCost = await pricing.calculate(request, event.offer, evidence);
+        const pricingSelection = pricing.select?.(request, [{ offer: event.offer, evidence }]);
+        const landedCost = pricingSelection
+          ? pricingSelection.selectedPath?.landedCost ?? null
+          : await pricing.calculate(request, event.offer, evidence);
         const decision = await policy.evaluate({
           request,
           event,
@@ -124,6 +127,7 @@ export class CheckpointApplication {
           evidence,
           match,
           landedCost,
+          ...(pricingSelection ? { pricingSelection } : {}),
           previousDecisions,
         });
         const committed = await repository.saveEvaluation(

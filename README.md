@@ -26,6 +26,7 @@ No environment file or OpenAI API key is needed. Deterministic adapters and a re
 | `pnpm build` | Create a production build |
 | `pnpm lint` | Check ESLint rules and Next.js conventions |
 | `pnpm typecheck` | Run strict TypeScript checks |
+| `pnpm evaluate:trust-core` | Run the reproducible manual Person A evaluation and boundary report |
 | `pnpm db:generate` | Generate a Drizzle migration from the schema |
 | `pnpm db:migrate` | Apply migrations to the configured SQLite database |
 | `pnpm db:reset` | Recreate a clean local database |
@@ -42,7 +43,7 @@ Dependencies point inward. `src/domain` contains Zod contracts and service inter
 
 The running app uses the real Person A trust-core services and Person B brief/matching services. Fixture adapters remain only as isolated checkpoint helpers. The merchant feed itself stays deterministic and simulated by design so the demo is repeatable.
 
-Per the repository guidance, this project does not contain automated tests. Validate work with `pnpm verify`, database reset/seed commands, and a manual reset-and-step smoke check in the browser.
+Per the repository guidance, this project does not contain automated tests. Validate work with `pnpm verify`, `pnpm evaluate:trust-core`, database reset/seed commands, and a manual reset-and-step smoke check in the browser.
 
 See [docs/BASELINE_DECISIONS.md](docs/BASELINE_DECISIONS.md) for the frozen scenario semantics.
 Person B's catalog disclosures and manual verification record are in [docs/DEMO_CATALOG.md](docs/DEMO_CATALOG.md) and [docs/PERSON_B_VERIFICATION.md](docs/PERSON_B_VERIFICATION.md).

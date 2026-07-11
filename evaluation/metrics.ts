@@ -33,7 +33,7 @@ export interface EvaluationMetrics {
 
 export interface EvaluationFailure {
   eventId: string;
-  kind: "MISSING_DECISION" | "OUTCOME_MISMATCH" | "FALSE_STRIKE" | "FALSE_BUY" | "MISSED_DEAL" | "UNNECESSARY_ESCALATION" | "DUPLICATE_ALERT" | "COST_MISMATCH" | "INCOMPLETE_EXPLANATION";
+  kind: "MISSING_DECISION" | "DUPLICATE_DECISION" | "UNEXPECTED_DECISION" | "OUTCOME_MISMATCH" | "FALSE_STRIKE" | "FALSE_BUY" | "MISSED_DEAL" | "UNNECESSARY_ESCALATION" | "DUPLICATE_ALERT" | "MISSING_EXPECTED_COST" | "COST_MISMATCH" | "INCOMPLETE_EXPLANATION";
   detail: string;
 }
 
@@ -42,16 +42,27 @@ const actionable = (outcome: DecisionOutcome): boolean => outcome === "ALERT" ||
 
 const explanationComplete = (decision: DecisionRecord): boolean => decision.requirements.length > 0
   && decision.requirements.every((item) => item.explanation.trim().length > 0)
-  && decision.landedCost.lines.length > 0
-  && decision.landedCost.lines.every((line) => line.provenance.source.trim().length > 0)
+  && (decision.landedCost
+    ? decision.landedCost.lines.length > 0
+      && decision.landedCost.lines.every((line) => line.provenance.source.trim().length > 0)
+    : Boolean(decision.pricingSelection?.alternatives.some((path) => path.reasonCodes.length > 0)))
   && decision.primaryReason.length > 0;
 
 export const calculateEvaluationMetrics = (
   decisions: readonly DecisionRecord[],
   expectations: readonly EvaluationExpectation[],
 ): EvaluationMetrics => {
-  const byEvent = new Map(decisions.map((decision) => [decision.eventId, decision]));
   const failures: EvaluationFailure[] = [];
+  const expectedEventIds = new Set(expectations.map((expectation) => expectation.eventId));
+  const decisionsByEvent = new Map<string, DecisionRecord[]>();
+  for (const decision of decisions) {
+    const existing = decisionsByEvent.get(decision.eventId) ?? [];
+    existing.push(decision);
+    decisionsByEvent.set(decision.eventId, existing);
+    if (!expectedEventIds.has(decision.eventId)) {
+      failures.push({ eventId: decision.eventId, kind: "UNEXPECTED_DECISION", detail: "Runtime emitted a decision for an event absent from ground truth." });
+    }
+  }
   let strikeCount = 0;
   let validStrikeCount = 0;
   let purchaseCount = 0;
@@ -66,11 +77,16 @@ export const calculateEvaluationMetrics = (
   let completeExplanationCount = 0;
 
   for (const expected of expectations) {
-    if (expected.offerIsValidDeal) validDealCount += 1;
-    const decision = byEvent.get(expected.eventId);
+    const expectedStrike = expected.offerIsValidDeal && actionable(expected.expectedOutcome);
+    if (expectedStrike) validDealCount += 1;
+    const eventDecisions = decisionsByEvent.get(expected.eventId) ?? [];
+    if (eventDecisions.length > 1) {
+      failures.push({ eventId: expected.eventId, kind: "DUPLICATE_DECISION", detail: `Runtime emitted ${eventDecisions.length} decisions for one event.` });
+    }
+    const decision = eventDecisions[0];
     if (!decision) {
       failures.push({ eventId: expected.eventId, kind: "MISSING_DECISION", detail: "No runtime decision was emitted." });
-      if (expected.offerIsValidDeal) missedDealCount += 1;
+      if (expectedStrike) missedDealCount += 1;
       continue;
     }
 
@@ -89,7 +105,7 @@ export const calculateEvaluationMetrics = (
         failures.push({ eventId: expected.eventId, kind: "FALSE_BUY", detail: "Purchase was not authorized by ground truth." });
       }
     }
-    if (expected.offerIsValidDeal && !actionable(decision.outcome)) {
+    if (expectedStrike && !actionable(decision.outcome)) {
       missedDealCount += 1;
       failures.push({ eventId: expected.eventId, kind: "MISSED_DEAL", detail: `Valid deal resulted in ${decision.outcome}.` });
     }
@@ -104,10 +120,12 @@ export const calculateEvaluationMetrics = (
       duplicateAlertCount += 1;
       failures.push({ eventId: expected.eventId, kind: "DUPLICATE_ALERT", detail: "Alert was emitted when the scenario expected suppression." });
     }
-    if (expected.expectedLandedCostMinor !== undefined) {
+    if (expected.expectedLandedCostMinor === undefined) {
+      failures.push({ eventId: expected.eventId, kind: "MISSING_EXPECTED_COST", detail: "Ground truth does not declare the expected landed cost." });
+    } else {
       checkedCostCount += 1;
-      if (decision.landedCost.total.minorUnits === expected.expectedLandedCostMinor) exactCostCount += 1;
-      else failures.push({ eventId: expected.eventId, kind: "COST_MISMATCH", detail: `Expected ${expected.expectedLandedCostMinor} minor units, received ${decision.landedCost.total.minorUnits}.` });
+      if (decision.landedCost?.total.minorUnits === expected.expectedLandedCostMinor) exactCostCount += 1;
+      else failures.push({ eventId: expected.eventId, kind: "COST_MISMATCH", detail: `Expected ${expected.expectedLandedCostMinor} minor units, received ${decision.landedCost?.total.minorUnits ?? "no landed cost"}.` });
     }
     if (explanationComplete(decision)) completeExplanationCount += 1;
     else failures.push({ eventId: expected.eventId, kind: "INCOMPLETE_EXPLANATION", detail: "Decision is missing requirements, cost provenance, or a reason code." });

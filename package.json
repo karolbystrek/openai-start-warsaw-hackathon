@@ -12,6 +12,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "evaluate:trust-core": "node --import tsx scripts/evaluate-trust-core.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --import tsx scripts/migrate.ts",
     "db:reset": "node --import tsx scripts/reset-db.ts",

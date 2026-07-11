@@ -73,7 +73,7 @@ export default async function Home() {
 
         <article className="card match-card">
           <p className="card-label">Person B · product identity</p>
-          {decision ? (
+          {decision?.landedCost ? (
             <>
               <div className="section-heading compact">
                 <h2>{decision.match.method.replaceAll("_", " ")}</h2>
@@ -113,7 +113,7 @@ export default async function Home() {
 
         <article className="card">
           <p className="card-label">Landed cost</p>
-          {decision ? (
+          {decision?.landedCost ? (
             <>
               <ul className="cost-lines">
                 {decision.landedCost.lines.map((line, index) => (
@@ -123,7 +123,7 @@ export default async function Home() {
               <div className="total"><span>Total delivered</span><strong>{formatMoney(decision.landedCost.total.currency, decision.landedCost.total.minorUnits)}</strong></div>
               <small>{decision.landedCost.ruleVersion} · {decision.landedCost.provenance.kind}</small>
             </>
-          ) : <p className="empty">The authoritative cost projection appears with a decision.</p>}
+          ) : <p className="empty">{decision ? "No valid deterministic pricing path is available." : "The authoritative cost projection appears with a decision."}</p>}
         </article>
       </section>
 

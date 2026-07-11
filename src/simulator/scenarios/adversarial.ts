@@ -9,8 +9,8 @@ import {
 } from "@/domain/contracts";
 import { headlineRequest } from "@/simulator/scenarios/headline";
 
-const START = "2026-07-12T08:00:00.000Z";
-const EVENT_TIME = "2026-07-12T08:01:00.000Z";
+const START = "2026-07-11T08:00:00.000Z";
+const EVENT_TIME = "2026-07-11T08:01:00.000Z";
 const FIXTURE_VERSION = "adversarial-v1";
 
 interface CaseDefinition {
@@ -51,12 +51,12 @@ const cases: readonly CaseDefinition[] = [
   { id: "reseller-channel", seller: "FAIL", sellerValue: "THIRD_PARTY_RESELLER" },
   { id: "blocked-seller", seller: "FAIL", sellerValue: "BLOCKED" },
   { id: "unavailable-stock", stock: "FAIL", stockValue: "OUT_OF_STOCK" },
-  { id: "low-stock", stockValue: "LOW_STOCK:2" },
+  { id: "low-stock", stockValue: "LOW_STOCK" },
   { id: "stale-stock", stock: "UNKNOWN", stockValue: "STALE" },
   { id: "foreign-currency", itemCurrency: "GBP", itemMinor: 5900, deliveryMinor: 540 },
   { id: "fx-crosses-cap", itemCurrency: "GBP", itemMinor: 5850, deliveryMinor: 500 },
   { id: "delivery-over-cap", itemMinor: 6900, deliveryMinor: 1200 },
-  { id: "duty-handling-over-cap", itemCurrency: "GBP", itemMinor: 5700, deliveryMinor: 400 },
+  { id: "duty-handling-over-cap", itemCurrency: "GBP", itemMinor: 6100, deliveryMinor: 400 },
   { id: "invalid-coupon", coupon: "FAIL", couponValue: "INVALID:SAVE20" },
   { id: "expired-coupon", coupon: "FAIL", couponValue: "EXPIRED:SAVE20" },
   { id: "coupon-minimum-spend", coupon: "FAIL", couponValue: "MINIMUM_SPEND_NOT_MET:10000" },
@@ -120,7 +120,7 @@ const createScenario = (definition: CaseDefinition): ScenarioFixture => {
     evidence,
   });
   const events = definition.duplicate
-    ? [first, SimulationEventSchema.parse({ ...first, id: `event-${definition.id}-2`, sequence: 1, occurredAt: "2026-07-12T08:02:00.000Z" })]
+    ? [first, SimulationEventSchema.parse({ ...first, id: `event-${definition.id}-2`, sequence: 1, occurredAt: "2026-07-11T08:02:00.000Z" })]
     : [first];
   return ScenarioFixtureSchema.parse({
     schemaVersion: 1,

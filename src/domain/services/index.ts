@@ -5,6 +5,7 @@ import type {
   Mandate,
   MatchAssessment,
   OfferSnapshot,
+  PricingSelection,
   ShoppingRequest,
   ShoppingBriefInterpretation,
   SimulatedOrder,
@@ -29,6 +30,12 @@ export interface VerificationService {
 
 export interface LandedCostCalculator {
   calculate(request: ShoppingRequest, offer: OfferSnapshot, evidence: EvidenceBundle): Promise<LandedCost>;
+  select?(request: ShoppingRequest, inputs: readonly {
+    offer: OfferSnapshot;
+    evidence: EvidenceBundle;
+    sellerTrustRank?: number;
+    preferredDeliveryMethods?: readonly string[];
+  }[]): PricingSelection;
 }
 
 export interface PolicyEvaluator {
@@ -38,7 +45,8 @@ export interface PolicyEvaluator {
     offer: OfferSnapshot;
     evidence: EvidenceBundle;
     match: MatchAssessment;
-    landedCost: LandedCost;
+    landedCost: LandedCost | null;
+    pricingSelection?: PricingSelection;
     mandate?: Mandate | null;
     previousDecisions?: readonly DecisionRecord[];
   }): Promise<DecisionRecord>;

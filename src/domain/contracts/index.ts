@@ -31,6 +31,7 @@ export const ReasonCodeSchema = z.enum([
   "HARD_REQUIREMENT_MISMATCH",
   "UNAVAILABLE_STOCK",
   "UNKNOWN_CRITICAL_FACT",
+  "PRICING_INPUT_UNKNOWN",
   "LANDED_COST_ABOVE_CAP",
   "VALID_DEAL_ALERT",
   "VALID_MANDATE_PURCHASE",
@@ -70,6 +71,7 @@ export const ShoppingRequestSchema = z.object({
     destinationCountry: z.string().regex(/^[A-Z]{2}$/),
     allowResellers: z.boolean(),
     maximumLandedCost: MoneySchema,
+    latestDeliveryAt: TimestampSchema.optional(),
   }),
   preferences: z.array(z.string().min(1)),
   notificationPolicy: z.object({ mode: z.enum(["ONCE", "MEANINGFUL_IMPROVEMENT"]), improvementThresholdMinor: z.number().int().safe().nonnegative() }),
@@ -114,6 +116,7 @@ export const ShoppingBriefInterpretationSchema = z.object({
       allowResellers: z.boolean().nullable(),
       maximumLandedCost: MoneySchema.nullable(),
       capIncludesDelivery: z.boolean().nullable(),
+      latestDeliveryAt: TimestampSchema.nullable().optional(),
     }),
     preferences: z.array(z.string().min(1)),
     notificationPolicy: z.object({
@@ -145,12 +148,68 @@ export const MandateSchema = z.object({
   quantity: z.literal(1),
   requireLowStock: z.boolean(),
   allowedIdentityMethods: z.array(z.enum(["EXACT_IDENTIFIER", "SEEDED_CATALOG"])).min(1),
+  allowedMerchantIds: z.array(StableIdSchema).min(1).optional(),
+  allowedSellerIds: z.array(StableIdSchema).min(1).optional(),
   effectiveAt: TimestampSchema,
   expiresAt: TimestampSchema,
   revokedAt: TimestampSchema.nullable(),
   consumedAt: TimestampSchema.nullable(),
 });
 export type Mandate = z.infer<typeof MandateSchema>;
+
+export const DeliveryOptionSchema = z.object({
+  id: StableIdSchema,
+  label: z.string().min(1),
+  method: z.string().min(1).default("STANDARD"),
+  price: MoneySchema.nullable(),
+  eligibility: CheckResultSchema.default("UNKNOWN"),
+  eligibilityReason: z.string().min(1).nullable().default(null),
+  thresholdBasis: z.enum([
+    "ITEM_BEFORE_DISCOUNTS",
+    "ITEM_AFTER_DISCOUNTS",
+    "CART_BEFORE_DISCOUNTS",
+    "CART_AFTER_DISCOUNTS",
+  ]).default("ITEM_BEFORE_DISCOUNTS"),
+  minimumSubtotal: MoneySchema.nullable().default(null),
+  entitlement: z.enum(["NONE", "MEMBERSHIP", "SUBSCRIPTION"]).default("NONE"),
+  entitlementStatus: CheckResultSchema.default("UNKNOWN"),
+  exclusions: z.array(z.string().min(1)).default([]),
+  destinationCountries: z.array(z.string().regex(/^[A-Z]{2}$/)).optional(),
+  sellerIds: z.array(StableIdSchema).optional(),
+  productCategories: z.array(z.string().min(1)).optional(),
+  requiredCouponCodes: z.array(z.string().min(1)).default([]),
+  deliveryWindow: z.object({
+    earliestAt: TimestampSchema.nullable(),
+    latestAt: TimestampSchema.nullable(),
+  }).nullable().default(null),
+  observedAt: TimestampSchema,
+  expiresAt: TimestampSchema.nullable().default(null),
+  provenance: ProvenanceSchema,
+});
+export type DeliveryOption = z.infer<typeof DeliveryOptionSchema>;
+
+export const CouponCandidateSchema = z.object({
+  code: z.string().min(1),
+  appliesTo: z.enum(["ITEM", "DELIVERY"]),
+  amount: MoneySchema,
+  eligibility: CheckResultSchema.default("UNKNOWN"),
+  eligibilityReason: z.string().min(1).nullable().default(null),
+  thresholdBasis: z.enum([
+    "ITEM_BEFORE_DISCOUNTS",
+    "ITEM_AFTER_DISCOUNTS",
+    "CART_BEFORE_DISCOUNTS",
+    "CART_AFTER_DISCOUNTS",
+  ]).default("ITEM_BEFORE_DISCOUNTS"),
+  minimumSubtotal: MoneySchema.nullable().default(null),
+  merchantIds: z.array(StableIdSchema).optional(),
+  sellerIds: z.array(StableIdSchema).optional(),
+  stackable: z.boolean().default(false),
+  combinableWith: z.array(z.string().min(1)).optional(),
+  observedAt: TimestampSchema,
+  expiresAt: TimestampSchema.nullable().default(null),
+  provenance: ProvenanceSchema,
+});
+export type CouponCandidate = z.infer<typeof CouponCandidateSchema>;
 
 export const OfferSnapshotSchema = z.object({
   schemaVersion: z.literal(SCHEMA_VERSION),
@@ -170,6 +229,8 @@ export const OfferSnapshotSchema = z.object({
   }),
   itemPrice: MoneySchema,
   deliveryPrice: MoneySchema,
+  deliveryOptions: z.array(DeliveryOptionSchema).min(1).optional(),
+  couponCandidates: z.array(CouponCandidateSchema).optional(),
   destinationCountries: z.array(z.string().regex(/^[A-Z]{2}$/)),
   observedAt: TimestampSchema,
 });
@@ -245,6 +306,31 @@ export const LandedCostSchema = z.object({
 });
 export type LandedCost = z.infer<typeof LandedCostSchema>;
 
+export const PricingPathSchema = z.object({
+  id: StableIdSchema,
+  offerId: StableIdSchema,
+  deliveryOptionId: StableIdSchema,
+  deliveryMethod: z.string().min(1),
+  couponCodes: z.array(z.string().min(1)),
+  status: z.enum(["VALID", "REJECTED", "UNKNOWN"]),
+  reasonCodes: z.array(z.string().min(1)),
+  landedCost: LandedCostSchema.nullable(),
+  deliveryLatestAt: TimestampSchema.nullable(),
+  freshnessObservedAt: TimestampSchema,
+  sellerTrustRank: z.number().int().nonnegative(),
+  preferredMethodRank: z.number().int().nonnegative(),
+  provenance: ProvenanceSchema,
+});
+export type PricingPath = z.infer<typeof PricingPathSchema>;
+
+export const PricingSelectionSchema = z.object({
+  selectedPathId: StableIdSchema.nullable(),
+  selectedPath: PricingPathSchema.nullable(),
+  alternatives: z.array(PricingPathSchema),
+  tieBreaker: z.literal("TOTAL_THEN_DELIVERY_THEN_FRESHNESS_THEN_SELLER_TRUST_THEN_PREFERENCE_THEN_PATH_ID"),
+});
+export type PricingSelection = z.infer<typeof PricingSelectionSchema>;
+
 export const RequirementResultSchema = z.object({
   requirement: z.string().min(1),
   result: CheckResultSchema,
@@ -261,7 +347,19 @@ export const DecisionRecordSchema = z.object({
   offer: OfferSnapshotSchema,
   evidence: EvidenceBundleSchema,
   match: MatchAssessmentSchema,
-  landedCost: LandedCostSchema,
+  landedCost: LandedCostSchema.nullable(),
+  pricingSelection: PricingSelectionSchema.optional(),
+  mandateAuthorization: z.object({
+    mandateId: StableIdSchema,
+    mandateVersion: z.number().int().positive(),
+    checks: z.array(RequirementResultSchema),
+  }).optional(),
+  notificationAssessment: z.object({
+    fingerprint: z.string().min(1),
+    reason: z.enum(["FIRST_MEANINGFUL_ALERT", "ONCE_ALREADY_SENT", "NO_MEANINGFUL_IMPROVEMENT", "MEANINGFUL_IMPROVEMENT"]).optional(),
+    suppressionReason: z.string().min(1).nullable(),
+    improvementMinor: z.number().int().safe().nullable(),
+  }).optional(),
   outcome: DecisionOutcomeSchema,
   primaryReason: ReasonCodeSchema,
   requirements: z.array(RequirementResultSchema),

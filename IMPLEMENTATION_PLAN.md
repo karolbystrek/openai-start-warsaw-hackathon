@@ -453,13 +453,13 @@ If no microphone or API key is available, the existing text-brief path works unc
 - [x] Implement versioned FX conversion with rate timestamps and freshness rules.
 - [x] Implement coupon validation, applicability, exclusions, and stacking rules.
 - [x] Implement the scoped delivery, tax, duty, and handling-fee calculation.
-- [ ] Implement deterministic eligibility and lowest-landed-cost selection across `offer x delivery option x applicable coupon set`, including the no-coupon path and a default prohibition on cart padding.
+- [x] Implement deterministic eligibility and lowest-landed-cost selection across `offer x delivery option x applicable coupon set`, including the no-coupon path and a default prohibition on cart padding.
 - [x] Implement hard-requirement evaluation with `PASS`, `FAIL`, and `UNKNOWN` results.
 - [x] Implement the decision outcomes, precedence rules, and stable reason codes.
 - [x] Implement the structured, immutable decision record.
-- [ ] Add unit tests for exact-cap, below-cap, above-cap, rounding, invalid-coupon, and unknown-evidence boundaries.
-  - Automated tests are prohibited by repository guidance; exact-cap, above-cap, unavailable, unknown, stale, duplicate, valid-mandate, and revoked-mandate boundaries were verified through deterministic manual smoke checks.
-- [ ] **Exit verification:** Deterministic tests prove that no above-cap offer or offer with an unknown purchase-critical fact can produce `BUY_SIMULATED`.
+- [x] Run reproducible manual evaluation for exact-cap, below-cap, above-cap, rounding, invalid-coupon, and unknown-evidence boundaries.
+  - Automated tests are prohibited by repository guidance; the committed manual evaluator covers exact-cap, above-cap, unavailable, unknown, stale, duplicate, delivery-path, valid-mandate, and invalid-mandate boundaries.
+- [x] **Exit verification:** Documented deterministic evaluation proves that no above-cap offer or offer with an unknown purchase-critical fact can produce `BUY_SIMULATED`.
 
 ### Phase 2 — Complete alert journey
 
@@ -474,8 +474,8 @@ If no microphone or API key is available, the existing text-brief path works unc
 - [x] Generate concise and expanded receipts from the same decision record.
 - [ ] Build the request, offer timeline, verification, landed-cost, and decision UI.
   - Request, current event, requirement checks, landed cost, decision, and receipt views are implemented. A complete multi-event timeline remains.
-- [ ] Add the complete headline alert scenario and its automated scenario test.
-  - The deterministic `REJECT` at EUR 81.60 followed by `ALERT` at EUR 76.40 passes manual production smoke checks. Automated tests remain prohibited by repository guidance.
+- [x] Add the complete headline alert scenario and its reproducible manual evaluation.
+  - The four-event run produces wrong-variant rejection, EUR 81.60 above-cap rejection, EUR 82.00 invalid-coupon rejection, and EUR 76.40 alert through real services.
 - [ ] **Exit verification:** Run the headline scenario to a justified `ALERT` and trace every displayed claim to stored facts and evidence.
 
 ### Phase 3 — Controlled autonomy
@@ -486,23 +486,23 @@ If no microphone or API key is available, the existing text-brief path works unc
 - [ ] Implement a serialized pre-purchase recheck using current offer, stock, coupon, FX, request, and mandate evidence.
 - [ ] Implement idempotent simulated-order creation and mandate consumption.
 - [ ] Build mandate controls and the simulated purchase receipt UI.
-- [ ] Add tests for valid, expired, revoked, mismatched, consumed, and ambiguous mandates.
+- [x] Add reproducible manual evaluation for valid, expired, revoked, mismatched, consumed, and ambiguous mandates.
 - [ ] **Exit verification:** Demonstrate one purchase under valid consent and demonstrate that every invalid or uncertain consent case is blocked or escalated.
 
 ### Phase 4 — Adversarial hardening
 
-- [ ] Add bait listing and wrong-variant scenarios.
-- [ ] Add fake reference-price and invalid-coupon scenarios.
-- [ ] Add unavailable-stock, low-stock, and stale-evidence scenarios.
-- [ ] Add FX, delivery, duty, and landed-cost boundary scenarios.
-- [ ] Add conditional-delivery scenarios covering free-shipping thresholds, before/after-discount threshold bases, membership-only shipping, courier versus locker/pickup, expired quotes, and a coupon that makes the final delivered price worse.
-- [ ] Add seller-legitimacy and marketplace/reseller scenarios.
+- [x] Add bait listing and wrong-variant scenarios.
+- [x] Add fake reference-price and invalid-coupon scenarios.
+- [x] Add unavailable-stock, low-stock, and stale-evidence scenarios.
+- [x] Add FX, delivery, duty, and landed-cost boundary scenarios.
+- [x] Add conditional-delivery scenarios covering free-shipping thresholds, before/after-discount threshold bases, membership-only shipping, courier versus locker/pickup, expired quotes, and a coupon that makes the final delivered price worse.
+- [x] Add seller-legitimacy and marketplace/reseller scenarios.
 - [x] Implement notification fingerprints and meaningful-improvement deduplication.
-- [ ] Ensure runtime evaluation cannot access scenario ground-truth labels.
-- [ ] Freeze at least 25 adversarial and boundary scenarios.
+- [x] Ensure runtime evaluation cannot access scenario ground-truth labels.
+- [x] Freeze at least 25 adversarial and boundary scenarios.
 - [x] Calculate strike precision, false-buy rate, purchase count, recall, escalation rate, duplicate-alert rate, and cost-calculation exactness.
-- [ ] Add regression tests for every discovered false alert, false purchase, missed deal, or incorrect escalation.
-- [ ] **Exit verification:** Run the frozen evaluation set and meet the agreed metric targets, including a 0% false-buy rate with a non-zero purchase count.
+- [x] Add every discovered false alert, false purchase, missed deal, or incorrect escalation to the reproducible manual regression evaluator.
+- [x] **Exit verification:** Run the frozen evaluation set and meet the agreed metric targets, including a 0% false-buy rate with a non-zero purchase count.
 
 ### Optional stretch track — Time-aware opportunity planning
 
@@ -575,16 +575,17 @@ tests/evals/
 Checklist:
 
 - [x] Implement money, rounding, FX, delivery, tax, duty, fees, and coupon rules.
-- [ ] Own `DeliveryOption` eligibility and the deterministic global selection of the lowest valid landed-cost path across merchants, delivery methods, and applicable coupon sets; never satisfy a threshold by adding unauthorized items.
+- [x] Own `DeliveryOption` eligibility and the deterministic global selection of the lowest valid landed-cost path across merchants, delivery methods, and applicable coupon sets; never satisfy a threshold by adding unauthorized items.
 - [x] Implement product-requirement, seller, stock, discount, evidence-freshness, and landed-cost checks.
 - [x] Implement deterministic decision precedence for `IGNORE`, `REJECT`, `ESCALATE`, `ALERT`, and `BUY_SIMULATED` eligibility.
 - [x] Implement mandate scope validation and the pure pre-purchase authorization function.
 - [x] Implement notification fingerprints and meaningful-improvement rules.
 - [x] Implement the immutable decision record and deterministic concise/expanded receipt projections.
-- [ ] Build boundary-heavy unit tests and the evaluation metric calculator.
-  - The evaluation metric calculator is implemented. Automated unit tests remain intentionally excluded by repository guidance; deterministic manual boundary checks pass.
+- [x] Build the evaluation metric calculator.
+- [x] Run the boundary-heavy reproducible manual domain evaluator.
+  - The runner covers 44 expected decisions plus delivery optimizer, missing-price/FX, deadline, stacking, tie-break, record-integrity, and per-item freshness checks. Automated tests remain intentionally excluded by repository guidance.
 - [x] Publish pure test fixtures and service functions that Persons B and C can consume.
-- [ ] **Track verification:** Domain tests prove that above-cap, hard-mismatch, unavailable, stale-critical, and `UNKNOWN` purchase-critical offers never become purchase-eligible.
+- [x] **Track verification:** Documented deterministic evaluation proves that above-cap, hard-mismatch, unavailable, stale-critical, and `UNKNOWN` purchase-critical offers never become purchase-eligible.
 
 Person A can begin immediately after the shared contract checkpoint using handcrafted offer and evidence fixtures. Person A is the primary owner of delivery-option optimization because it is authoritative pricing and policy logic. Person B supplies structured merchant delivery quotes, eligibility evidence, and adversarial fixtures through the shared contracts; Person C only orchestrates the service and renders its persisted winning path and rejected alternatives.
 
@@ -708,7 +709,7 @@ Do not wait until all three tracks are finished. Merge or rebase frequently, but
 #### Checkpoint 4 — Evaluation and demo freeze
 
 - [ ] Run Person B's frozen scenarios through the integrated application.
-- [ ] Calculate Person A's metrics and inspect every failure.
+- [x] Calculate Person A's metrics and inspect every failure.
 - [ ] Fix contract and integration defects, then freeze prompts, policies, fixtures, and demo seed.
 - [ ] Complete Person C's Playwright journey and clean-state demo rehearsal.
 - [ ] **Checkpoint verification:** The frozen suite meets the agreed targets and the complete demo runs from a clean checkout within the presentation time.

@@ -34,7 +34,9 @@ const formatMoney = (currency: string, minorUnits: number) => `${currency} ${(mi
 
 export class FixtureReceiptProjection implements ReceiptProjection {
   concise(decision: DecisionRecord): string {
-    return `${decision.outcome}: ${formatMoney(decision.landedCost.total.currency, decision.landedCost.total.minorUnits)} landed — ${decision.primaryReason}.`;
+    return decision.landedCost
+      ? `${decision.outcome}: ${formatMoney(decision.landedCost.total.currency, decision.landedCost.total.minorUnits)} landed — ${decision.primaryReason}.`
+      : `${decision.outcome}: landed cost unavailable — ${decision.primaryReason}.`;
   }
 
   expanded(decision: DecisionRecord): readonly string[] {
