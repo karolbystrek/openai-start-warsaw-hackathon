@@ -9,10 +9,15 @@ The Next.js foundation was generated with `npx create-next-app@latest` defaults 
 Requirements: Node.js 20+ and pnpm 11.
 
 ```bash
+nvm use
+corepack enable
+corepack install --global pnpm@11.7.0
 pnpm install
 pnpm db:reset
 pnpm dev
 ```
+
+The repository includes `.nvmrc` pinned to Node.js 22.22.2. If `pnpm` is missing or the shell reports Node.js 18, run the three bootstrap commands above before installing dependencies.
 
 Open <http://localhost:3000>, interpret and confirm a brief (the complete example is ready to use), then step through five deterministic simulator events. The timeline rejects a wrong model, an above-cap GBP offer, and an invalid-coupon offer before producing an alert for the EUR 76.40 offer and then emitting a low-stock update.
 
