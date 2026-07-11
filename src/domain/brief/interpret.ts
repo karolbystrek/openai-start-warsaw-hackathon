@@ -42,11 +42,17 @@ export const catalogProductFromText = (sourceText: string) => {
 };
 
 const moneyFromText = (sourceText: string) => {
-  const prefix = sourceText.match(/(?:under|below|maximum|max|up to|no more than)\s+(EUR|GBP|USD|€)\s*(\d+(?:[.,]\d{1,2})?)/i);
-  const suffix = sourceText.match(/(?:under|below|maximum|max|up to|no more than)\s+(\d+(?:[.,]\d{1,2})?)\s*(EUR|GBP|USD|€)/i);
-  const amount = prefix?.[2] ?? suffix?.[1];
+  const qualifier = "(?:under|below|maximum|max|up to|no more than|(?:update|change|set)(?:\\s+the)?(?:\\s+maximum)?(?:\\s+delivered)?(?:\\s+price|\\s+budget)?\\s+to)";
+  const matches = [
+    ...sourceText.matchAll(new RegExp(`${qualifier}\\s+(EUR|GBP|USD|€)\\s*(\\d+(?:[.,]\\d{1,2})?)`, "gi")),
+    ...sourceText.matchAll(new RegExp(`${qualifier}\\s+(\\d+(?:[.,]\\d{1,2})?)\\s*(EUR|GBP|USD|€)`, "gi")),
+  ].sort((left, right) => (left.index ?? 0) - (right.index ?? 0));
+  const match = matches.at(-1);
+  if (!match) return null;
+  const currencyFirst = /^(?:EUR|GBP|USD|€)$/i.test(match[1] ?? "");
+  const currencyToken = currencyFirst ? match[1] : match[2];
+  const amount = currencyFirst ? match[2] : match[1];
   if (!amount) return null;
-  const currencyToken = prefix?.[1] ?? suffix?.[2];
   const currency = currencyToken === "€" ? "EUR" : currencyToken?.toUpperCase();
   if (!currency) return null;
   const [whole = "0", fraction = ""] = amount.replace(",", ".").split(".");
@@ -80,12 +86,12 @@ const resolveRequiredVariant = (
 ): string | null => {
   if (!profile) return null;
   if (profile.id === "shoes") {
-    const size = sourceText.match(/\b(?:size|eu|rozmiar)\s*(\d{2}(?:[.,]5)?)\b/i)?.[1];
+    const size = [...sourceText.matchAll(/\b(?:size|eu|rozmiar)\s*(\d{2}(?:[.,]5)?)\b/gi)].at(-1)?.[1];
     return size ? `EU ${size.replace(",", ".")}` : null;
   }
   if (profile.id === "vase") {
-    const millimetres = sourceText.match(/\b(\d{2,3})\s*mm\b/i)?.[1];
-    const centimetres = sourceText.match(/\b(\d{1,2})\s*cm\b/i)?.[1];
+    const millimetres = [...sourceText.matchAll(/\b(\d{2,3})\s*mm\b/gi)].at(-1)?.[1];
+    const centimetres = [...sourceText.matchAll(/\b(\d{1,2})\s*cm\b/gi)].at(-1)?.[1];
     const height = millimetres ?? (centimetres ? String(Number(centimetres) * 10) : null);
     const clear = /\b(?:clear|transparent|przezroczyst\w*)\b/i.test(sourceText);
     const glass = /\b(?:glass|szklan\w*)\b/i.test(sourceText);

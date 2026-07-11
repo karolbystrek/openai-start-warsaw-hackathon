@@ -42,11 +42,16 @@ function createShoppingChatApplication(): ShoppingChatApplication {
 
 const chatGlobal = globalThis as typeof globalThis & {
   shoppingChatApplication?: ShoppingChatApplication;
+  shoppingChatApplicationVersion?: number;
 };
 
+const SHOPPING_CHAT_APPLICATION_VERSION = 3;
 export const shoppingChatApplication = chatGlobal.shoppingChatApplication
-  ?? createShoppingChatApplication();
+  && chatGlobal.shoppingChatApplicationVersion === SHOPPING_CHAT_APPLICATION_VERSION
+  ? chatGlobal.shoppingChatApplication
+  : createShoppingChatApplication();
 
 if (process.env.NODE_ENV !== "production") {
   chatGlobal.shoppingChatApplication = shoppingChatApplication;
+  chatGlobal.shoppingChatApplicationVersion = SHOPPING_CHAT_APPLICATION_VERSION;
 }

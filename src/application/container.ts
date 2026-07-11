@@ -39,8 +39,17 @@ function createCheckpointApplication(): CheckpointApplication {
 
 const checkpointGlobal = globalThis as typeof globalThis & {
   checkpointApplication?: CheckpointApplication;
+  checkpointApplicationVersion?: number;
 };
 
-export const checkpointApplication = checkpointGlobal.checkpointApplication ?? createCheckpointApplication();
+const CHECKPOINT_APPLICATION_VERSION = 3;
+const cachedCheckpointApplication = checkpointGlobal.checkpointApplication;
+export const checkpointApplication = cachedCheckpointApplication
+  && checkpointGlobal.checkpointApplicationVersion === CHECKPOINT_APPLICATION_VERSION
+  ? cachedCheckpointApplication
+  : createCheckpointApplication();
 
-if (process.env.NODE_ENV !== "production") checkpointGlobal.checkpointApplication = checkpointApplication;
+if (process.env.NODE_ENV !== "production") {
+  checkpointGlobal.checkpointApplication = checkpointApplication;
+  checkpointGlobal.checkpointApplicationVersion = CHECKPOINT_APPLICATION_VERSION;
+}

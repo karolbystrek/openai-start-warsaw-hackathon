@@ -21,8 +21,8 @@ export function RequestControls({ request }: { request: ShoppingRequest }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
       });
-      const payload = await response.json() as { error?: string };
-      if (!response.ok) throw new Error(payload.error ?? "Could not update the shopping request.");
+      const payload = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) throw new Error(payload?.error ?? "Could not update the shopping request.");
       router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not update the shopping request.");

@@ -80,6 +80,12 @@ export class InMemoryCheckpointRepository implements EvaluationRepository {
     return this.requests.get(`${id}:${version}`) ?? null;
   }
 
+  async getLatestRequest(effectiveAt?: string): Promise<ShoppingRequest | null> {
+    return [...this.requests.values()]
+      .filter((request) => !effectiveAt || request.effectiveAt <= effectiveAt)
+      .sort((left, right) => right.effectiveAt.localeCompare(left.effectiveAt) || right.version - left.version)[0] ?? null;
+  }
+
   async getCurrentRequest(requestId: string, effectiveAt?: string): Promise<ShoppingRequest | null> {
     return [...this.requests.values()]
       .filter((request) => request.id === requestId && (!effectiveAt || request.effectiveAt <= effectiveAt))

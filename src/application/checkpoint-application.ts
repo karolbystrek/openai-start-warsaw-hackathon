@@ -362,13 +362,13 @@ export class CheckpointApplication {
   private async activateRequestOnce(request: ShoppingRequest): Promise<SimulationState> {
     const selected = this.dependencies.scenarioResolver?.(request) ?? this.runtime;
     this.runtime = selected;
+    selected.simulator.reset();
     this.activeRequest = ShoppingRequestSchema.parse({
       ...request,
       id: selected.initialRequest.id,
       lifecycle: "ACTIVE",
-      effectiveAt: selected.initialRequest.effectiveAt,
+      effectiveAt: selected.simulator.getState().virtualTime,
     });
-    selected.simulator.reset();
     await this.dependencies.repository.resetToRequest(this.activeRequest);
     return this.getSimulationState();
   }
@@ -543,7 +543,8 @@ export class CheckpointApplication {
     const { initialRequest } = this.runtime;
     const { repository, scenarioRequests, scenarioResolver } = this.dependencies;
     const fallback = this.activeRequest ?? initialRequest;
-    const current = await repository.getCurrentRequest(fallback.id, effectiveAt);
+    const current = await repository.getCurrentRequest(fallback.id, effectiveAt)
+      ?? await repository.getLatestRequest(effectiveAt);
     if (current) {
       this.activeRequest = current;
       return current;

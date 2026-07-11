@@ -54,8 +54,9 @@ function assistantSummary(result: InterpretationResponse): string {
 }
 
 async function readResponse<T>(response: Response): Promise<T> {
-  const payload = await response.json() as T & { error?: string };
-  if (!response.ok) throw new Error(payload.error ?? "The shopping assistant request failed.");
+  const payload = await response.json().catch(() => null) as (T & { error?: string }) | null;
+  if (!response.ok) throw new Error(payload?.error ?? "The shopping assistant request failed.");
+  if (!payload) throw new Error("The shopping assistant returned an empty response.");
   return payload;
 }
 
@@ -306,7 +307,13 @@ export function ShoppingChat() {
           value={input}
         />
         <button className="send-button" type="submit" disabled={!input.trim() || pending !== null} aria-label="Send message">
-          {pending === "interpret" ? <span className="send-loader" /> : <span aria-hidden="true">↑</span>}
+          {pending === "interpret" ? (
+            <span className="send-loader" />
+          ) : (
+            <svg aria-hidden="true" viewBox="0 0 20 20">
+              <path d="M10 15V5m0 0L6 9m4-4 4 4" />
+            </svg>
+          )}
         </button>
       </form>
       {error ? <p className="chat-error" role="alert">{error}</p> : null}
