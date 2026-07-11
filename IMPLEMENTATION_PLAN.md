@@ -641,6 +641,8 @@ Checklist:
 
 - [x] Scaffold Next.js, shared styling/components, SQLite/Drizzle, migrations, and repository adapters.
 - [x] Implement request creation, interpreted-brief confirmation, activation, pause, and revocation flows.
+- [x] Persist anonymous-session chats and messages, link confirmed monitoring requests back to their originating chat, and expose active/history monitoring tabs.
+  - Drizzle migrations and repository smoke checks verify chat restoration, session ownership isolation, active request listing, and latest-lifecycle history classification.
 - [x] Implement `evaluate-offer.ts` using typed matching, verification, pricing, policy, audit, and persistence interfaces.
   - The use case is implemented under `CheckpointApplication` and `EvaluationRepository`; naming differs from the proposed filename, while the typed orchestration and persistence boundary are complete.
 - [x] Implement serialized `recheck-and-buy.ts`, idempotent simulated-order storage, and mandate consumption.

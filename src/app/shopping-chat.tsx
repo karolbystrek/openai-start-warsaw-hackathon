@@ -7,6 +7,8 @@ import Image from "next/image";
 
 import type { SimulationState } from "@/application/simulation-state";
 import { formatMoney } from "@/app/format-money";
+import { chatAssistantSummary } from "@/application/chat-application";
+import type { PersistedChat } from "@/application/chat-history";
 import {
   VoiceShoppingCompanion,
   type VoiceBriefReview,
@@ -44,19 +46,6 @@ const initialMessages: ChatMessage[] = [{
   content: "Tell me what you want to buy. I’ll separate hard requirements from preferences and flag anything that needs clarification.",
 }];
 
-function assistantSummary(result: InterpretationResponse): string {
-  const questions = result.interpretation.ambiguities
-    .filter((item) => item.blocking)
-    .map((item) => item.clarificationQuestion);
-  if (questions.length > 0) {
-    const { brand, model } = result.interpretation.requestDraft.product;
-    const product = [brand, model].filter(Boolean).join(" ");
-    const remaining = questions.length - 1;
-    return `${product ? `I’m tracking ${product}. ` : "Let’s make the search precise. "}${questions[0]}${remaining > 0 ? ` We’ll cover ${remaining} more ${remaining === 1 ? "detail" : "details"} after that.` : ""}`;
-  }
-  return "The brief is complete. Review the hard constraints below and confirm them before monitoring is activated.";
-}
-
 function eventTitle(state: SimulationState): string {
   const event = state.simulator.currentEvent;
   if (!event) return "Waiting for the first merchant update";
@@ -85,7 +74,7 @@ async function readResponse<T>(response: Response): Promise<T> {
   return payload;
 }
 
-export function ShoppingChat() {
+export function ShoppingChat({ initialChatId = null }: { initialChatId?: string | null }) {
   const router = useRouter();
   const conversationEndRef = useRef<HTMLDivElement>(null);
   const announcedDecisionIds = useRef(new Set<string>());
@@ -98,6 +87,40 @@ export function ShoppingChat() {
   const [pending, setPending] = useState<"interpret" | "confirm" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [monitoringState, setMonitoringState] = useState<SimulationState | null>(null);
+  const [chatId, setChatId] = useState<string | null>(initialChatId);
+  const [loadingChat, setLoadingChat] = useState(Boolean(initialChatId));
+
+  useEffect(() => {
+    if (!initialChatId) return;
+    let cancelled = false;
+    void fetch(`/api/chats/${initialChatId}`, { cache: "no-store" })
+      .then(readResponse<PersistedChat>)
+      .then((chat) => {
+        if (cancelled) return;
+        setChatId(chat.id);
+        setMessages([initialMessages[0]!, ...chat.messages]);
+        setUserTurns(chat.state.userTurns);
+        setInterpretation(chat.state.interpretation);
+        setConfirmedRequest(chat.state.confirmedRequest);
+        setError(null);
+      })
+      .catch((cause) => {
+        if (!cancelled) setError(cause instanceof Error ? cause.message : "Could not restore this chat.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingChat(false);
+      });
+    return () => { cancelled = true; };
+  }, [initialChatId]);
+
+  const ensureChat = useCallback(async (): Promise<string> => {
+    if (chatId) return chatId;
+    const response = await fetch("/api/chats", { method: "POST" });
+    const chat = await readResponse<PersistedChat>(response);
+    setChatId(chat.id);
+    router.replace(`/?chat=${chat.id}`, { scroll: false });
+    return chat.id;
+  }, [chatId, router]);
 
   useEffect(() => {
     let cancelled = false;
@@ -156,17 +179,18 @@ export function ShoppingChat() {
     setPending("interpret");
 
     try {
+      const activeChatId = await ensureChat();
       const response = await fetch("/api/chat/interpret", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: nextTurns }),
+        body: JSON.stringify({ chatId: activeChatId, messages: nextTurns }),
       });
       const result = await readResponse<InterpretationResponse>(response);
       setInterpretation(result);
       setMessages((current) => [...current, {
         id: `assistant-${crypto.randomUUID()}`,
         role: "assistant",
-        content: assistantSummary(result),
+        content: chatAssistantSummary(result),
       }]);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not interpret the brief.");
@@ -192,13 +216,14 @@ export function ShoppingChat() {
     ]);
 
     try {
+      const activeChatId = await ensureChat();
       const response = await fetch("/api/chat/interpret", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [content] }),
+        body: JSON.stringify({ chatId: activeChatId, messages: [content] }),
       });
       const result = await readResponse<InterpretationResponse>(response);
-      const summary = assistantSummary(result);
+      const summary = chatAssistantSummary(result);
       const missingQuestions = result.interpretation.ambiguities
         .filter((item) => item.blocking)
         .map((item) => item.clarificationQuestion);
@@ -215,17 +240,18 @@ export function ShoppingChat() {
     } finally {
       setPending(null);
     }
-  }, []);
+  }, [ensureChat]);
 
   const confirmRequest = async () => {
     if (!interpretation?.canConfirm || userTurns.length === 0 || pending) return;
     setError(null);
     setPending("confirm");
     try {
+      const activeChatId = await ensureChat();
       const response = await fetch("/api/chat/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: userTurns }),
+        body: JSON.stringify({ chatId: activeChatId, messages: userTurns }),
       });
       const result = await readResponse<ConfirmationResponse>(response);
       setInterpretation(result);
@@ -233,7 +259,7 @@ export function ShoppingChat() {
         setMessages((current) => [...current, {
           id: `assistant-${crypto.randomUUID()}`,
           role: "assistant",
-          content: assistantSummary(result),
+          content: chatAssistantSummary(result),
         }]);
         return;
       }
@@ -263,6 +289,8 @@ export function ShoppingChat() {
     setConfirmedRequest(null);
     setMonitoringState(null);
     setError(null);
+    setChatId(null);
+    router.push("/");
   };
 
   const draft = interpretation?.interpretation.requestDraft;
@@ -295,6 +323,7 @@ export function ShoppingChat() {
         </Link>
         <nav aria-label="Chat actions">
           <button className="new-chat" type="button" onClick={resetChat} disabled={pending !== null}>New chat</button>
+          <Link className="details-link" href="/monitoring">Monitoring</Link>
           <Link className="details-link" href="/details">Details</Link>
         </nav>
       </header>
@@ -325,7 +354,11 @@ export function ShoppingChat() {
               <p>{message.content}</p>
             </div>
           ))}
-          {pending === "interpret" ? (
+          {loadingChat ? (
+            <div className="chat-message assistant thinking">
+              <span>Assistant</span><p>Restoring this chat…</p>
+            </div>
+          ) : pending === "interpret" ? (
             <div className="chat-message assistant thinking">
               <span>Assistant</span><p>Reading your requirements…</p>
             </div>
