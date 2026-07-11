@@ -1,7 +1,6 @@
 import { checkpointApplication } from "@/application/container";
 import { formatMoney } from "@/app/format-money";
 import { ShoppingChat } from "@/app/shopping-chat";
-import { BriefIntake } from "@/app/brief-intake";
 import { SimulatorControls } from "@/app/simulator-controls";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +36,6 @@ export default async function Home() {
       </header>
 
       <ShoppingChat />
-      <BriefIntake initialText={state.request.originalText} />
 
       <SimulatorControls
         complete={state.simulator.status === "COMPLETE"}
@@ -72,7 +70,7 @@ export default async function Home() {
         </article>
 
         <article className="card match-card">
-          <p className="card-label">Person B · product identity</p>
+          <p className="card-label">Product identity</p>
           {decision?.landedCost ? (
             <>
               <div className="section-heading compact">
@@ -129,7 +127,7 @@ export default async function Home() {
 
       <section className="timeline card">
         <div className="section-heading">
-          <div><p className="card-label">Person B · simulator evidence</p><h2>Processed event timeline</h2></div>
+          <div><p className="card-label">Merchant evidence</p><h2>Processed event timeline</h2></div>
           <span className="event-count">{state.processedEvents.length} / 5 events</span>
         </div>
         {state.processedEvents.length ? (

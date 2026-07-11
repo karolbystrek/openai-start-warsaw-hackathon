@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 
 import { formatMoney } from "@/app/format-money";
 import type {
@@ -23,7 +24,7 @@ type InterpretationResponse = {
 type ConfirmationResponse = InterpretationResponse & {
   confirmed: boolean;
   request: ShoppingRequest | null;
-  monitoring: "DEFERRED";
+  monitoring: "ACTIVE" | "DEFERRED";
 };
 
 const DEMO_BRIEF = "Nike Dunk Low, size 43, under EUR 80 delivered to Poland. New only, no resellers. Notify me once.";
@@ -49,6 +50,7 @@ async function readResponse<T>(response: Response): Promise<T> {
 }
 
 export function ShoppingChat() {
+  const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [userTurns, setUserTurns] = useState<string[]>([]);
   const [input, setInput] = useState("");
@@ -118,8 +120,11 @@ export function ShoppingChat() {
       setMessages((current) => [...current, {
         id: `assistant-${crypto.randomUUID()}`,
         role: "assistant",
-        content: "Request confirmed and saved. The monitoring connector is ready for the merchant event stream.",
+        content: result.monitoring === "ACTIVE"
+          ? "Request confirmed. Monitoring is active and ready for merchant events."
+          : "Request confirmed and saved. Monitoring activation is still pending.",
       }]);
+      router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not confirm the brief.");
     } finally {
@@ -237,6 +242,18 @@ export function ShoppingChat() {
             </p>
           ) : null}
 
+          {interpretation ? (
+            <details className="interpretation-details">
+              <summary>Interpretation details</summary>
+              <dl>
+                <div><dt>Source</dt><dd>{interpretation.interpretation.provenance.kind}</dd></div>
+                <div><dt>Adapter</dt><dd>{interpretation.interpretation.provenance.source}</dd></div>
+                <div><dt>Model</dt><dd>{interpretation.interpretation.provenance.model ?? "Deterministic"}</dd></div>
+                <div><dt>Schema</dt><dd>{interpretation.interpretation.provenance.outputSchemaVersion ?? "Not specified"}</dd></div>
+              </dl>
+            </details>
+          ) : null}
+
           <button
             className="confirm-brief"
             type="button"
@@ -245,7 +262,9 @@ export function ShoppingChat() {
           >
             {pending === "confirm" ? "Confirming…" : confirmedRequest ? "Request confirmed" : "Confirm hard requirements"}
           </button>
-          <p className="connector-note">Event subscription: deferred until the simulator adapter is connected.</p>
+          <p className="connector-note">
+            {confirmedRequest ? "Monitoring active for the confirmed request." : "Merchant monitoring starts only after explicit confirmation."}
+          </p>
         </aside>
       </div>
     </section>

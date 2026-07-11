@@ -1,12 +1,25 @@
 import { OpenAIBriefInterpreter } from "@/ai/openai-brief-interpreter";
 import { ResilientBriefInterpreter } from "@/ai/resilient-brief-interpreter";
-import { ShoppingChatApplication } from "@/application/chat-application";
+import {
+  ShoppingChatApplication,
+  type MonitoringActivationPort,
+  type MonitoringActivationStatus,
+} from "@/application/chat-application";
+import { checkpointApplication } from "@/application/container";
 import { createDatabase } from "@/db/client";
 import { DrizzleCheckpointRepository } from "@/db/repositories/drizzle-checkpoint-repository";
 import {
   ConfirmedShoppingRequestProjector,
   DeterministicBriefInterpreter,
 } from "@/domain/brief/interpret";
+import type { ShoppingRequest } from "@/domain/contracts";
+
+class CheckpointMonitoringActivation implements MonitoringActivationPort {
+  async requestActivated(request: ShoppingRequest): Promise<MonitoringActivationStatus> {
+    await checkpointApplication.activateRequest(request);
+    return "ACTIVE";
+  }
+}
 
 function createLiveInterpreter() {
   if (!process.env.OPENAI_API_KEY || !process.env.OPENAI_MODEL) return undefined;
@@ -23,6 +36,7 @@ function createShoppingChatApplication(): ShoppingChatApplication {
     interpreter,
     new ConfirmedShoppingRequestProjector(),
     new DrizzleCheckpointRepository(db),
+    new CheckpointMonitoringActivation(),
   );
 }
 

@@ -87,11 +87,12 @@ export class CheckpointApplication {
       const projected = this.dependencies.briefProjector.project(interpretation);
       if (!projected) return { interpretation, state: null };
 
-      this.activeRequest = ShoppingRequestSchema.parse({ ...projected, lifecycle: "ACTIVE" });
-      this.dependencies.simulator.reset();
-      await this.dependencies.repository.resetToRequest(this.activeRequest);
-      return { interpretation, state: await this.getSimulationState() };
+      return { interpretation, state: await this.activateRequestOnce(projected) };
     });
+  }
+
+  async activateRequest(request: ShoppingRequest): Promise<SimulationState> {
+    return this.serializeMutation(() => this.activateRequestOnce(request));
   }
 
   async stepSimulation(expectedSequence: number): Promise<SimulationState> {
@@ -165,6 +166,13 @@ export class CheckpointApplication {
     const request = await this.loadCurrentRequest();
     simulator.reset();
     await repository.resetToRequest(request);
+    return this.getSimulationState();
+  }
+
+  private async activateRequestOnce(request: ShoppingRequest): Promise<SimulationState> {
+    this.activeRequest = ShoppingRequestSchema.parse({ ...request, lifecycle: "ACTIVE" });
+    this.dependencies.simulator.reset();
+    await this.dependencies.repository.resetToRequest(this.activeRequest);
     return this.getSimulationState();
   }
 

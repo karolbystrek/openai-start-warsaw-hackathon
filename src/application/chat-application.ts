@@ -18,17 +18,20 @@ export interface ChatInterpretationResult {
 export interface ChatConfirmationResult extends ChatInterpretationResult {
   confirmed: boolean;
   request: ShoppingRequest | null;
-  monitoring: "DEFERRED";
+  monitoring: MonitoringActivationStatus;
 }
 
+export type MonitoringActivationStatus = "ACTIVE" | "DEFERRED";
+
 export interface MonitoringActivationPort {
-  requestActivated(request: ShoppingRequest): Promise<void>;
+  requestActivated(request: ShoppingRequest): Promise<MonitoringActivationStatus>;
 }
 
 export class DeferredMonitoringActivation implements MonitoringActivationPort {
-  async requestActivated(): Promise<void> {
+  async requestActivated(): Promise<MonitoringActivationStatus> {
     // Event-source wiring is intentionally deferred. This port is the seam used
     // later to subscribe an activated request to merchant simulation events.
+    return "DEFERRED";
   }
 }
 
@@ -64,11 +67,14 @@ export class ShoppingChatApplication {
       result.requestDraft.version,
     );
     if (existing) {
+      const monitoring = existing.lifecycle === "ACTIVE"
+        ? await this.monitoring.requestActivated(existing)
+        : "DEFERRED";
       return {
         ...result,
         confirmed: existing.lifecycle === "ACTIVE",
         request: existing,
-        monitoring: "DEFERRED",
+        monitoring,
       };
     }
 
@@ -77,9 +83,9 @@ export class ShoppingChatApplication {
       lifecycle: "ACTIVE",
     });
     await this.repository.saveRequest(request);
-    await this.monitoring.requestActivated(request);
+    const monitoring = await this.monitoring.requestActivated(request);
 
-    return { ...result, confirmed: true, request, monitoring: "DEFERRED" };
+    return { ...result, confirmed: true, request, monitoring };
   }
 
   private toSourceText(userTurns: readonly string[]): string {
