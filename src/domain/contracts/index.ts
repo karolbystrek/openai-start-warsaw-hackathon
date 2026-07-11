@@ -45,7 +45,9 @@ export const ProvenanceSchema = z.object({
   adapterVersion: z.string().min(1).optional(),
   model: z.string().min(1).optional(),
   promptVersion: z.string().min(1).optional(),
+  outputSchemaVersion: z.string().min(1).optional(),
   responseId: z.string().min(1).optional(),
+  inputDigest: z.string().min(1).optional(),
 });
 export type Provenance = z.infer<typeof ProvenanceSchema>;
 
@@ -75,6 +77,61 @@ export const ShoppingRequestSchema = z.object({
   effectiveAt: TimestampSchema,
 });
 export type ShoppingRequest = z.infer<typeof ShoppingRequestSchema>;
+
+export const BriefAmbiguitySchema = z.object({
+  code: z.enum([
+    "MISSING_PRODUCT",
+    "MISSING_SIZE",
+    "MISSING_CONDITION",
+    "MISSING_DESTINATION",
+    "MISSING_BUDGET",
+    "UNCLEAR_DELIVERED_CAP",
+    "CONFLICTING_REQUIREMENT",
+    "AMBIGUOUS_PURCHASE_CONSENT",
+  ]),
+  fieldPath: z.string().min(1),
+  blocking: z.boolean(),
+  explanation: z.string().min(1),
+  clarificationQuestion: z.string().min(1),
+});
+export type BriefAmbiguity = z.infer<typeof BriefAmbiguitySchema>;
+
+export const ShoppingBriefInterpretationSchema = z.object({
+  schemaVersion: z.literal(SCHEMA_VERSION),
+  originalText: z.string().min(1),
+  requestDraft: z.object({
+    product: z.object({
+      brand: z.string().min(1).nullable(),
+      model: z.string().min(1).nullable(),
+      category: z.string().min(1).nullable(),
+      identifiers: z.array(z.object({ type: z.enum(["GTIN", "EAN", "UPC", "MPN", "SKU"]), value: z.string().min(1) })),
+    }),
+    requirements: z.object({
+      size: z.string().min(1).nullable(),
+      condition: z.enum(["NEW", "USED", "REFURBISHED"]).nullable(),
+      quantity: z.number().int().positive(),
+      destinationCountry: z.string().regex(/^[A-Z]{2}$/).nullable(),
+      allowResellers: z.boolean().nullable(),
+      maximumLandedCost: MoneySchema.nullable(),
+      capIncludesDelivery: z.boolean().nullable(),
+    }),
+    preferences: z.array(z.string().min(1)),
+    notificationPolicy: z.object({
+      mode: z.enum(["ONCE", "MEANINGFUL_IMPROVEMENT"]),
+      improvementThresholdMinor: z.number().int().safe().nonnegative(),
+    }),
+  }),
+  mandateIntent: z.object({
+    requested: z.boolean(),
+    requireLowStock: z.boolean().nullable(),
+    minimumLandedCost: MoneySchema.nullable(),
+    maximumLandedCost: MoneySchema.nullable(),
+    requiresConfirmation: z.literal(true),
+  }),
+  ambiguities: z.array(BriefAmbiguitySchema),
+  provenance: ProvenanceSchema,
+});
+export type ShoppingBriefInterpretation = z.infer<typeof ShoppingBriefInterpretationSchema>;
 
 export const MandateSchema = z.object({
   schemaVersion: z.literal(SCHEMA_VERSION),
@@ -145,9 +202,22 @@ export const MatchAssessmentSchema = z.object({
   id: StableIdSchema,
   requestId: StableIdSchema,
   offerId: StableIdSchema,
-  method: z.enum(["EXACT_IDENTIFIER", "SEEDED_CATALOG", "NORMALIZED", "AI_ASSISTED", "UNRESOLVED"]),
+  method: z.enum(["EXACT_IDENTIFIER", "SEEDED_CATALOG", "NORMALIZED", "ATTRIBUTE_LEVEL", "AI_ASSISTED", "UNRESOLVED"]),
   overall: CheckResultSchema,
-  attributes: z.array(z.object({ attribute: z.string().min(1), result: CheckResultSchema, evidence: z.string().min(1) })),
+  canonicalProductId: StableIdSchema.nullable().optional(),
+  attributes: z.array(z.object({
+    attribute: z.string().min(1),
+    result: CheckResultSchema,
+    evidence: z.string().min(1),
+    provenance: ProvenanceSchema.optional(),
+  })),
+  stages: z.array(z.object({
+    stage: z.enum(["EXACT_IDENTIFIER", "SEEDED_CATALOG", "NORMALIZED", "ATTRIBUTE_LEVEL", "AI_ASSISTED"]),
+    result: CheckResultSchema,
+    evidence: z.array(z.string().min(1)),
+    candidateCanonicalIds: z.array(StableIdSchema),
+    provenance: ProvenanceSchema,
+  })).optional(),
   provenance: ProvenanceSchema,
 });
 export type MatchAssessment = z.infer<typeof MatchAssessmentSchema>;
@@ -220,6 +290,17 @@ export const SimulationEventSchema = z.discriminatedUnion("type", [
   SimulationEventBaseSchema.extend({ type: z.literal("SELLER_CHANGED"), sellerId: StableIdSchema, status: z.enum(["VERIFIED", "UNVERIFIED", "BLOCKED"]) }),
 ]);
 export type SimulationEvent = z.infer<typeof SimulationEventSchema>;
+
+export const ScenarioFixtureSchema = z.object({
+  schemaVersion: z.literal(SCHEMA_VERSION),
+  id: StableIdSchema,
+  fixtureVersion: z.string().min(1),
+  seed: z.string().min(1),
+  virtualStartAt: TimestampSchema,
+  request: ShoppingRequestSchema,
+  events: z.array(SimulationEventSchema),
+});
+export type ScenarioFixture = z.infer<typeof ScenarioFixtureSchema>;
 
 export const SimulatedOrderSchema = z.object({
   schemaVersion: z.literal(SCHEMA_VERSION),

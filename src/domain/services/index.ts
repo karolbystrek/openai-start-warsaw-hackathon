@@ -5,12 +5,17 @@ import type {
   MatchAssessment,
   OfferSnapshot,
   ShoppingRequest,
+  ShoppingBriefInterpretation,
   SimulatedOrder,
   SimulationEvent,
 } from "@/domain/contracts";
 
 export interface BriefInterpreter {
-  interpret(sourceText: string): Promise<ShoppingRequest>;
+  interpret(sourceText: string): Promise<ShoppingBriefInterpretation>;
+}
+
+export interface ConfirmedBriefProjector {
+  project(interpretation: ShoppingBriefInterpretation): ShoppingRequest | null;
 }
 
 export interface MatchService {
@@ -58,6 +63,7 @@ export interface SimulatorControl {
     currentEvent: SimulationEvent | null;
     nextSequence: number;
   };
+  subscribe(listener: (event: SimulationEvent) => void): () => void;
 }
 
 export interface CheckpointRepository {

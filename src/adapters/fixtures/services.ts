@@ -1,18 +1,14 @@
-import { ShoppingRequestSchema, type DecisionRecord, type EvidenceBundle, type LandedCost, type MatchAssessment, type OfferSnapshot, type ShoppingRequest } from "@/domain/contracts";
-import type { BriefInterpreter, LandedCostCalculator, MatchService, PolicyEvaluator, ReceiptProjection, VerificationService } from "@/domain/services";
-import { costsByOfferId, decisionsByOfferId, headlineRequest, matchesByOfferId } from "@/simulator/scenarios/headline";
-
-export class DeterministicBriefInterpreter implements BriefInterpreter {
-  async interpret(sourceText: string): Promise<ShoppingRequest> {
-    return ShoppingRequestSchema.parse({ ...headlineRequest, originalText: sourceText });
-  }
-}
+import { DecisionRecordSchema, type DecisionRecord, type EvidenceBundle, type LandedCost, type MatchAssessment, type OfferSnapshot, type ShoppingRequest } from "@/domain/contracts";
+import type { LandedCostCalculator, MatchService, PolicyEvaluator, ReceiptProjection, VerificationService } from "@/domain/services";
+import { costsByOfferId, decisionsByOfferId } from "@/adapters/fixtures/trust-core-fixtures";
+import { StagedMatchService } from "@/domain/matching/staged-matcher";
+import { CachedAmbiguousMatchAssessor } from "@/ai/cached-ambiguous-match";
 
 export class FixtureMatchService implements MatchService {
-  async assess(_request: ShoppingRequest, offer: OfferSnapshot): Promise<MatchAssessment> {
-    const match = matchesByOfferId.get(offer.id);
-    if (!match) throw new Error(`No fixture match for offer ${offer.id}.`);
-    return match;
+  private readonly matcher = new StagedMatchService(undefined, new CachedAmbiguousMatchAssessor());
+
+  async assess(request: ShoppingRequest, offer: OfferSnapshot): Promise<MatchAssessment> {
+    return this.matcher.assess(request, offer);
   }
 }
 
@@ -34,7 +30,13 @@ export class FixturePolicyEvaluator implements PolicyEvaluator {
   async evaluate(input: Parameters<PolicyEvaluator["evaluate"]>[0]): Promise<DecisionRecord> {
     const decision = decisionsByOfferId.get(input.offer.id);
     if (!decision) throw new Error(`No fixture decision for offer ${input.offer.id}.`);
-    return decision;
+    return DecisionRecordSchema.parse({
+      ...decision,
+      offer: input.offer,
+      evidence: input.evidence,
+      match: input.match,
+      landedCost: input.landedCost,
+    });
   }
 }
 

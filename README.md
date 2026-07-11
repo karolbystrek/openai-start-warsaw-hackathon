@@ -14,7 +14,7 @@ pnpm db:reset
 pnpm dev
 ```
 
-Open <http://localhost:3000>, reset the scenario, and step twice. The first GBP offer is rejected at EUR 81.60 landed; the second EUR offer produces an alert at EUR 76.40 landed.
+Open <http://localhost:3000>, reset the scenario, and step through five fixture events. The timeline rejects a wrong model, a GBP offer at EUR 81.60 landed, and an invalid coupon before producing an alert for the EUR 76.40 offer and then emitting a low-stock update.
 
 No environment file or OpenAI API key is needed. Deterministic adapters and a repository-local SQLite path are the defaults. To use the optional OpenAI adapter later, copy `.env.example` to `.env.local` and configure `OPENAI_API_KEY` and `OPENAI_MODEL`.
 
@@ -45,3 +45,4 @@ Checkpoint adapters are visibly marked `STUB` in decision provenance. They are c
 Per the repository guidance, this project does not contain automated tests. Validate work with `pnpm verify`, database reset/seed commands, and a manual reset-and-step smoke check in the browser.
 
 See [docs/BASELINE_DECISIONS.md](docs/BASELINE_DECISIONS.md) for the frozen scenario semantics.
+Person B's catalog disclosures and manual verification record are in [docs/DEMO_CATALOG.md](docs/DEMO_CATALOG.md) and [docs/PERSON_B_VERIFICATION.md](docs/PERSON_B_VERIFICATION.md).

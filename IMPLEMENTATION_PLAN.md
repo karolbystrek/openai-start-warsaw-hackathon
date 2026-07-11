@@ -540,16 +540,16 @@ tests/scenarios/
 
 Checklist:
 
-- [ ] Implement Zod-validated shopping-brief interpretation with explicit ambiguities.
-- [ ] Build the canonical demo catalog, aliases, exact identifiers, normalized attributes, and disclosed seeded mappings.
-- [ ] Implement staged exact, seeded, normalized, attribute-level, and AI-assisted matching.
-- [ ] Persist prompt/schema/model versions and evidence provenance in every AI-derived `MatchAssessment`.
-- [ ] Add deterministic cached outputs or a non-AI fallback for the headline demo.
-- [ ] Implement the seeded virtual clock and play, pause, step, reset, and speed controls as services.
-- [ ] Author the headline event stream and at least 25 adversarial scenario fixtures with hidden ground truth.
-- [ ] Ensure runtime outputs contain only evidence and match assessments, never `ALERT` or `BUY_SIMULATED` decisions.
-- [ ] Publish a fixture-backed simulator adapter and matching service for Person C.
-- [ ] **Track verification:** The same seed produces the same event sequence, and matching tests distinguish exact, fuzzy, contradictory, and unresolved identities with traceable evidence.
+- [x] Implement Zod-validated shopping-brief interpretation with explicit ambiguities.
+- [x] Build the canonical demo catalog, aliases, exact identifiers, normalized attributes, and disclosed seeded mappings.
+- [x] Implement staged exact, seeded, normalized, attribute-level, and AI-assisted matching.
+- [x] Persist prompt/schema/model versions and evidence provenance in every AI-derived `MatchAssessment`.
+- [x] Add deterministic cached outputs or a non-AI fallback for the headline demo.
+- [x] Implement the seeded virtual clock and play, pause, step, reset, and speed controls as services.
+- [x] Author the headline event stream and at least 25 adversarial scenario fixtures with hidden ground truth.
+- [x] Ensure runtime outputs contain only evidence and match assessments, never `ALERT` or `BUY_SIMULATED` decisions.
+- [x] Publish a fixture-backed simulator adapter and matching service for Person C.
+- [x] **Track verification:** The same seed produces the same event sequence, and manual matching smoke checks distinguish exact, fuzzy, contradictory, and unresolved identities with traceable evidence. Automated tests remain excluded by repository guidance.
 
 Person B can begin immediately after the shared contract checkpoint using a stub policy response supplied through the shared interface.
 
