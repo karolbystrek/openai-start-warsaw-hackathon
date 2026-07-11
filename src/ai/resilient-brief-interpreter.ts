@@ -8,13 +8,17 @@ export class ResilientBriefInterpreter implements BriefInterpreter {
   ) {}
 
   async interpret(sourceText: string): Promise<ShoppingBriefInterpretation> {
-    if (this.live) {
-      try {
-        return await this.live.interpret(sourceText);
-      } catch {
-        // A model or network failure must not break deterministic demo behavior.
-      }
+    const fallbackResult = await this.fallback.interpret(sourceText);
+    if (!this.live) return fallbackResult;
+
+    try {
+      const liveResult = await this.live.interpret(sourceText);
+      const fallbackBlocking = fallbackResult.ambiguities.filter((item) => item.blocking).length;
+      const liveBlocking = liveResult.ambiguities.filter((item) => item.blocking).length;
+      return liveBlocking < fallbackBlocking ? liveResult : fallbackResult;
+    } catch {
+      // A model or network failure must not break deterministic demo behavior.
     }
-    return this.fallback.interpret(sourceText);
+    return fallbackResult;
   }
 }

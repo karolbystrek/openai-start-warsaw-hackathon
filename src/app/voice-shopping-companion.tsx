@@ -54,6 +54,8 @@ export function VoiceShoppingCompanion({
   const sessionRef = useRef<RealtimeSession | null>(null);
   const emittedUserTranscriptIdsRef = useRef(new Set<string>());
   const latestUserTranscriptRef = useRef<string | null>(null);
+  const connectingRef = useRef(false);
+  const voiceAttemptRef = useRef(0);
   const [phase, setPhase] = useState<VoicePhase>("idle");
   const [visible, setVisible] = useState(false);
   const [connected, setConnected] = useState(false);
@@ -62,6 +64,8 @@ export function VoiceShoppingCompanion({
   const [error, setError] = useState<string | null>(null);
 
   const stopVoice = useCallback(() => {
+    voiceAttemptRef.current += 1;
+    connectingRef.current = false;
     sessionRef.current?.close();
     sessionRef.current = null;
     setConnected(false);
@@ -71,7 +75,10 @@ export function VoiceShoppingCompanion({
   }, []);
 
   const startVoice = useCallback(async () => {
-    if (disabled || sessionRef.current || phase === "connecting") return;
+    if (disabled || sessionRef.current || connectingRef.current) return;
+    connectingRef.current = true;
+    const attempt = ++voiceAttemptRef.current;
+    let session: RealtimeSession | null = null;
     setError(null);
     setBriefReady(false);
     emittedUserTranscriptIdsRef.current.clear();
@@ -80,6 +87,7 @@ export function VoiceShoppingCompanion({
 
     try {
       const token = await readTokenResponse(await fetch("/api/realtime/session", { method: "POST" }));
+      if (voiceAttemptRef.current !== attempt) return;
 
       const reviewBrief = tool({
         name: "review_shopping_brief",
@@ -119,7 +127,7 @@ export function VoiceShoppingCompanion({
         tools: [reviewBrief],
       });
 
-      const session = new RealtimeSession(agent, {
+      session = new RealtimeSession(agent, {
         model: token.model,
         config: {
           outputModalities: ["audio"],
@@ -162,23 +170,28 @@ export function VoiceShoppingCompanion({
         }
       });
       session.on("error", () => {
+        if (sessionRef.current !== session) return;
         setError("The voice connection was interrupted. You can reconnect or keep typing.");
         setPhase("error");
       });
 
-      await session.connect({ apiKey: token.clientSecret });
       sessionRef.current = session;
+      await session.connect({ apiKey: token.clientSecret });
+      if (voiceAttemptRef.current !== attempt || sessionRef.current !== session) return;
+      connectingRef.current = false;
       setConnected(true);
       setPhase("listening");
       session.sendMessage("Welcome the user briefly, introduce yourself as Scout, and ask what product they want you to hunt for.");
     } catch (cause) {
-      sessionRef.current?.close();
+      if (voiceAttemptRef.current !== attempt || sessionRef.current !== session) return;
+      session?.close();
       sessionRef.current = null;
+      connectingRef.current = false;
       setConnected(false);
       setError(cause instanceof Error ? cause.message : "Could not start voice intake.");
       setPhase("error");
     }
-  }, [disabled, onBriefReview, onUserTranscript, phase]);
+  }, [disabled, onBriefReview, onUserTranscript]);
 
   const toggleMute = () => {
     const session = sessionRef.current;
@@ -207,7 +220,12 @@ export function VoiceShoppingCompanion({
     };
   }, [startVoice]);
 
-  useEffect(() => () => sessionRef.current?.close(), []);
+  useEffect(() => () => {
+    voiceAttemptRef.current += 1;
+    connectingRef.current = false;
+    sessionRef.current?.close();
+    sessionRef.current = null;
+  }, []);
 
   if (!visible && phase === "idle") return null;
 

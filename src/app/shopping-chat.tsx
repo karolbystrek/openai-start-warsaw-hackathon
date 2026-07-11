@@ -8,7 +8,6 @@ import Image from "next/image";
 import { formatMoney } from "@/app/format-money";
 import { MerchantOpportunity } from "@/app/merchant-opportunity";
 import type { SimulationState } from "@/application/simulation-state";
-import { formatMoney } from "@/app/format-money";
 import { BirthdayOpportunity } from "@/app/birthday-opportunity";
 import { chatAssistantSummary } from "@/application/chat-application";
 import type { PersistedChat } from "@/application/chat-history";
@@ -81,6 +80,7 @@ export function ShoppingChat({ initialChatId = null }: { initialChatId?: string 
   const router = useRouter();
   const conversationEndRef = useRef<HTMLDivElement>(null);
   const announcedDecisionIds = useRef(new Set<string>());
+  const loadedChatIdRef = useRef<string | null>(null);
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [userTurns, setUserTurns] = useState<string[]>([]);
@@ -95,11 +95,17 @@ export function ShoppingChat({ initialChatId = null }: { initialChatId?: string 
 
   useEffect(() => {
     if (!initialChatId) return;
+    if (loadedChatIdRef.current === initialChatId) {
+      setLoadingChat(false);
+      return;
+    }
     let cancelled = false;
+    setLoadingChat(true);
     void fetch(`/api/chats/${initialChatId}`, { cache: "no-store" })
       .then(readResponse<PersistedChat>)
       .then((chat) => {
         if (cancelled) return;
+        loadedChatIdRef.current = chat.id;
         setChatId(chat.id);
         setMessages([initialMessages[0]!, ...chat.messages]);
         setUserTurns(chat.state.userTurns);
@@ -120,6 +126,7 @@ export function ShoppingChat({ initialChatId = null }: { initialChatId?: string 
     if (chatId) return chatId;
     const response = await fetch("/api/chats", { method: "POST" });
     const chat = await readResponse<PersistedChat>(response);
+    loadedChatIdRef.current = chat.id;
     setChatId(chat.id);
     router.replace(`/?chat=${chat.id}`, { scroll: false });
     return chat.id;
@@ -299,6 +306,7 @@ export function ShoppingChat({ initialChatId = null }: { initialChatId?: string 
     setConfirmedRequest(null);
     setMonitoringState(null);
     setError(null);
+    loadedChatIdRef.current = null;
     setChatId(null);
     router.push("/");
   };
