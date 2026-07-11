@@ -62,6 +62,16 @@ function readableReason(reason: string): string {
   return reason.replaceAll("_", " ").toLowerCase().replace(/^./, (letter) => letter.toUpperCase());
 }
 
+function monitorsSameProduct(chatRequest: ShoppingRequest, simulationRequest: ShoppingRequest): boolean {
+  const simulatedIdentifiers = new Set(
+    simulationRequest.product.identifiers.map((identifier) => `${identifier.type}:${identifier.value}`),
+  );
+  return chatRequest.requirements.size === simulationRequest.requirements.size
+    && chatRequest.product.identifiers.some((identifier) => (
+      simulatedIdentifiers.has(`${identifier.type}:${identifier.value}`)
+    ));
+}
+
 async function readResponse<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => null) as (T & { error?: string }) | null;
   if (!response.ok) throw new Error(payload?.error ?? "The shopping assistant request failed.");
@@ -297,7 +307,8 @@ export function ShoppingChat({ initialChatId = null }: { initialChatId?: string 
   const selectedProfile = presentationProducts.find((profile) => (
     profile.brand === draft?.product.brand && profile.model === draft?.product.model
   ));
-  const chatMonitoringState = confirmedRequest && monitoringState?.request.id === confirmedRequest.id
+  const chatMonitoringState = confirmedRequest && monitoringState
+    && monitorsSameProduct(confirmedRequest, monitoringState.request)
     ? monitoringState
     : null;
   const needsColor = interpretation?.interpretation.ambiguities.some((item) => item.code === "MISSING_COLOR") ?? false;
@@ -467,12 +478,6 @@ export function ShoppingChat({ initialChatId = null }: { initialChatId?: string 
                         .map((reason) => <li key={reason}>✓ {reason}</li>)}
                     </ul>
                     <div className="monitor-product-actions">
-                      <Link
-                        className="monitor-product-link secondary"
-                        href={`/products/${encodeURIComponent(chatMonitoringState.currentDecision.offer.id)}${chatId ? `?chat=${encodeURIComponent(chatId)}` : ""}`}
-                      >
-                        View details
-                      </Link>
                       {selectedProfile ? (
                         <a
                           className="monitor-product-link"
