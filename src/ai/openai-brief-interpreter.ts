@@ -56,7 +56,7 @@ export class OpenAIBriefInterpreter implements BriefInterpreter {
             "Any monetary ceiling is the maximum total landed cost, including item price, delivery, taxes, duties, fees, currency conversion, and valid discounts; set capIncludesDelivery to true and never ask whether the cap includes those costs.",
             "Ask only for facts needed to evaluate delivered cost and product identity: exact product, applicable variant or size, condition, destination, delivered budget, and seller-channel policy.",
             "For products where sizing is not meaningful, set size to N/A and do not emit MISSING_SIZE.",
-            "Do not mark a brief incomplete merely because color or another optional preference was omitted.",
+            "For the three presentation products, ask the user to choose a color before activation and store it as a Color preference.",
             "Use MISSING_SELLER_POLICY when the user has not said whether resellers or marketplaces are allowed.",
             "List each unresolved activation-critical ambiguity with a short, natural clarification question.",
             "Never infer a destination, seller policy, evidence, purchase consent, or permission to relax a cap.",
@@ -106,6 +106,10 @@ export class OpenAIBriefInterpreter implements BriefInterpreter {
     }
     if (requirements.allowResellers === null) {
       addAmbiguity("MISSING_SELLER_POLICY", "requestDraft.requirements.allowResellers", "Seller-channel permission must be explicit.", "May I include trusted resellers and marketplaces, or official retailers only?");
+    }
+    const selectedColor = output.requestDraft.preferences.find((preference) => /^color\s*:/i.test(preference));
+    if (catalogProduct && !selectedColor) {
+      addAmbiguity("MISSING_COLOR", "requestDraft.preferences.color", "A color has not been selected yet.", "Which color would you like?");
     }
 
     return ShoppingBriefInterpretationSchema.parse({

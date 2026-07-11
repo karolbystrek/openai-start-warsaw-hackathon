@@ -111,6 +111,12 @@ const variantQuestion = (profile: PresentationProductProfile | null): string => 
   return "Which EU shoe size do you need?";
 };
 
+const resolveColor = (sourceText: string, profile: PresentationProductProfile | null): string | null => {
+  if (!profile) return null;
+  const normalized = normalizeText(sourceText);
+  return profile.colorOptions.find((color) => normalized.includes(normalizeText(color))) ?? null;
+};
+
 export class DeterministicBriefInterpreter implements BriefInterpreter {
   constructor(private readonly now: () => string = () => new Date().toISOString()) {}
 
@@ -118,6 +124,7 @@ export class DeterministicBriefInterpreter implements BriefInterpreter {
     const text = sourceText.trim();
     const profile = resolvePresentationProduct(text);
     const requiredVariant = resolveRequiredVariant(text, profile);
+    const color = resolveColor(text, profile);
     const maximumLandedCost = moneyFromText(text);
     const destinationCountry = /\b(poland|polska|\bpl\b)\b/i.test(text) ? "PL" : null;
     const condition = /\bnew(?:\s+only)?\b/i.test(text)
@@ -145,6 +152,7 @@ export class DeterministicBriefInterpreter implements BriefInterpreter {
     const ambiguities: BriefAmbiguity[] = [];
     if (!profile) ambiguities.push(ambiguity("MISSING_PRODUCT", "requestDraft.product", "The product could not be resolved to one of the three supported presentation products.", "Do you want Nike Dunk Low, Iittala Aalto Vase, or Apple MacBook Air M3?"));
     if (!requiredVariant) ambiguities.push(ambiguity("MISSING_SIZE", "requestDraft.requirements.size", "The presentation-critical product variant is incomplete.", variantQuestion(profile)));
+    if (profile && !color) ambiguities.push(ambiguity("MISSING_COLOR", "requestDraft.preferences.color", "A color has not been selected yet.", `Which color do you prefer: ${profile.colorOptions.join(", ")}?`));
     if (!destinationCountry) ambiguities.push(ambiguity("MISSING_DESTINATION", "requestDraft.requirements.destinationCountry", "Delivered cost depends on the delivery destination.", "Which country should the offer be delivered to?"));
     if (!maximumLandedCost) ambiguities.push(ambiguity("MISSING_BUDGET", "requestDraft.requirements.maximumLandedCost", "No unambiguous monetary ceiling and currency were found.", "What is the maximum delivered price and currency?"));
     if (!condition) ambiguities.push(ambiguity("MISSING_CONDITION", "requestDraft.requirements.condition", "The acceptable product condition was not stated.", "Should the item be new, used, or refurbished?"));
@@ -172,7 +180,7 @@ export class DeterministicBriefInterpreter implements BriefInterpreter {
           maximumLandedCost,
           capIncludesDelivery: maximumLandedCost ? true : null,
         },
-        preferences: [],
+        preferences: color ? [`Color: ${color}`] : [],
         notificationPolicy: { mode: "ONCE", improvementThresholdMinor: 0 },
       },
       mandateIntent: {
