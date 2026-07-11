@@ -7,6 +7,7 @@ import Image from "next/image";
 
 import { formatMoney } from "@/app/format-money";
 import { BirthdayOpportunity } from "@/app/birthday-opportunity";
+import type { SimulationState } from "@/application/simulation-state";
 import {
   VoiceShoppingCompanion,
   type VoiceBriefReview,
@@ -57,13 +58,6 @@ function assistantSummary(result: InterpretationResponse): string {
   return "The brief is complete. Review the hard constraints below and confirm them before monitoring is activated.";
 }
 
-function eventTitle(state: SimulationState): string {
-  const event = state.simulator.currentEvent;
-  if (!event) return "Waiting for the first merchant update";
-  if (event.type === "OFFER_OBSERVED") return event.offer.title;
-  return event.type.replaceAll("_", " ").toLowerCase().replace(/^./, (letter) => letter.toUpperCase());
-}
-
 function reactionTitle(decision: DecisionRecord): string {
   switch (decision.outcome) {
     case "ALERT": return "I found a deal that matches your requirements";
@@ -72,10 +66,6 @@ function reactionTitle(decision: DecisionRecord): string {
     case "ESCALATE": return "I need more information before acting on this offer";
     case "IGNORE": return "I checked this update and kept monitoring";
   }
-}
-
-function readableReason(reason: string): string {
-  return reason.replaceAll("_", " ").toLowerCase().replace(/^./, (letter) => letter.toUpperCase());
 }
 
 async function readResponse<T>(response: Response): Promise<T> {
@@ -318,6 +308,11 @@ export function ShoppingChat() {
           ) : null}
         </div>
 
+        <VoiceShoppingCompanion
+          disabled={pending !== null}
+          onBriefReview={reviewVoiceBrief}
+        />
+
         <div className="chat-messages" aria-live="polite">
           {messages.map((message) => (
             <div className={`chat-message ${message.role}`} key={message.id}>
@@ -387,11 +382,6 @@ export function ShoppingChat() {
           <div className="conversation-end" ref={conversationEndRef} />
         </div>
       </section>
-
-      <VoiceShoppingCompanion
-        disabled={pending !== null}
-        onBriefReview={reviewVoiceBrief}
-      />
 
       <form className="chat-composer" onSubmit={sendMessage}>
         <label className="sr-only" htmlFor="shopping-message">Message the shopping assistant</label>

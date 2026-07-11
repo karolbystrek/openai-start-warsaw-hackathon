@@ -238,6 +238,11 @@ export function VoiceShoppingCompanion({
           <span className={`voice-state ${briefReady ? "ready" : phase}`}>{briefReady ? "Brief ready" : phaseLabel[phase]}</span>
         </div>
         <p className="scout-transcript" aria-live="polite">“{transcript}”</p>
+        {phase === "connecting" || phase === "thinking" ? (
+          <span className="scout-thinking-dots" aria-label="Scout is thinking">
+            <i /><i /><i />
+          </span>
+        ) : null}
         {missingQuestions.length > 0 ? (
           <p className="scout-next"><strong>Next:</strong> {missingQuestions[0]}</p>
         ) : null}
