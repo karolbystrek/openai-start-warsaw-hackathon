@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 
+import type { SimulationState } from "@/application/simulation-state";
 import { formatMoney } from "@/app/format-money";
-import { BirthdayOpportunity } from "@/app/birthday-opportunity";
 import {
   VoiceShoppingCompanion,
   type VoiceBriefReview,
@@ -381,8 +381,47 @@ export function ShoppingChat() {
               </div>
             </div>
           ) : null}
-          {confirmedRequest && draft?.product.brand === "Nike" && draft.product.model === "Dunk Low" ? (
-            <BirthdayOpportunity requestId={confirmedRequest.id} />
+          {monitoringState && (confirmedRequest || monitoringState.processedEvents.length > 0) ? (
+            <div className="chat-message assistant monitor-message">
+              <span>Monitoring update</span>
+              <div className={`monitor-update ${monitoringState.currentDecision?.outcome.toLowerCase() ?? "waiting"}`}>
+                <div className="monitor-update-heading">
+                  <div>
+                    <small>{monitoringState.currentDecision ? "Latest engine reaction" : "Monitoring active"}</small>
+                    <h2>{monitoringState.currentDecision ? reactionTitle(monitoringState.currentDecision) : eventTitle(monitoringState)}</h2>
+                  </div>
+                  {monitoringState.currentDecision ? (
+                    <span>{monitoringState.currentDecision.outcome}</span>
+                  ) : <span>WATCHING</span>}
+                </div>
+                {monitoringState.currentDecision ? (
+                  <>
+                    <p className="monitor-offer">{eventTitle(monitoringState)}</p>
+                    <dl>
+                      {monitoringState.currentDecision.landedCost ? (
+                        <div>
+                          <dt>Total delivered</dt>
+                          <dd>{formatMoney(
+                            monitoringState.currentDecision.landedCost.total.currency,
+                            monitoringState.currentDecision.landedCost.total.minorUnits,
+                          )}</dd>
+                        </div>
+                      ) : null}
+                      <div><dt>Why</dt><dd>{readableReason(monitoringState.currentDecision.primaryReason)}</dd></div>
+                    </dl>
+                    {(monitoringState.currentDecision.outcome === "ALERT" || monitoringState.currentDecision.outcome === "BUY_SIMULATED") ? (
+                      <ul className="monitor-passes">
+                        {monitoringState.currentDecision.requirements
+                          .filter((requirement) => requirement.result === "PASS")
+                          .slice(0, 4)
+                          .map((requirement) => <li key={requirement.requirement}>✓ {readableReason(requirement.requirement)}</li>)}
+                      </ul>
+                    ) : null}
+                  </>
+                ) : <p className="monitor-offer">Open details to send a preconfigured merchant event.</p>}
+                <Link className="monitor-details-link" href="/details">Open event details →</Link>
+              </div>
+            </div>
           ) : null}
           <div className="conversation-end" ref={conversationEndRef} />
         </div>
