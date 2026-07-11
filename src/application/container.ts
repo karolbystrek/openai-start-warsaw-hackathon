@@ -1,6 +1,4 @@
 import { CachedAmbiguousMatchAssessor } from "@/ai/cached-ambiguous-match";
-import { OpenAIBriefInterpreter } from "@/ai/openai-brief-interpreter";
-import { ResilientBriefInterpreter } from "@/ai/resilient-brief-interpreter";
 import { CheckpointApplication } from "@/application/checkpoint-application";
 import { createDatabase } from "@/db/client";
 import { DrizzleCheckpointRepository } from "@/db/repositories/drizzle-checkpoint-repository";
@@ -12,13 +10,11 @@ import { DeterministicLandedCostCalculator, headlineLandedCostRules } from "@/do
 import { DeterministicVerificationService } from "@/domain/verification";
 import { FixtureSimulator } from "@/simulator/fixture-simulator";
 import { headlineEvents, headlineRequest } from "@/simulator/scenarios/headline";
+import { presentationScenarioRequests, resolvePresentationScenario } from "@/simulator/scenarios";
 
 function createCheckpointApplication(): CheckpointApplication {
   const { db } = createDatabase();
   const deterministicBriefInterpreter = new DeterministicBriefInterpreter();
-  const liveBriefInterpreter = process.env.OPENAI_API_KEY && process.env.OPENAI_MODEL
-    ? new OpenAIBriefInterpreter()
-    : undefined;
   return new CheckpointApplication({
     initialRequest: headlineRequest,
     runId: "headline-run",
@@ -29,8 +25,10 @@ function createCheckpointApplication(): CheckpointApplication {
     pricing: new DeterministicLandedCostCalculator(headlineLandedCostRules),
     policy: new DeterministicPolicyEvaluator(),
     receipts: new DeterministicReceiptProjection(),
-    briefInterpreter: new ResilientBriefInterpreter(deterministicBriefInterpreter, liveBriefInterpreter),
+    briefInterpreter: deterministicBriefInterpreter,
     briefProjector: new ConfirmedShoppingRequestProjector(),
+    scenarioRequests: presentationScenarioRequests,
+    scenarioResolver: resolvePresentationScenario,
   });
 }
 

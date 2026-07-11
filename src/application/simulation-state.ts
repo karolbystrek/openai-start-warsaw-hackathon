@@ -9,6 +9,7 @@ export const SimulationStateSchema = z.object({
     speed: z.number().positive(),
     virtualTime: z.string(),
     nextSequence: z.number().int().nonnegative(),
+    totalEvents: z.number().int().nonnegative(),
     currentEvent: SimulationEventSchema.nullable(),
   }),
   processedEvents: z.array(SimulationEventSchema),

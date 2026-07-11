@@ -65,6 +65,7 @@ export interface SimulatorControl {
     virtualTime: string;
     currentEvent: SimulationEvent | null;
     nextSequence: number;
+    totalEvents: number;
   };
   subscribe(listener: (event: SimulationEvent) => void): () => void;
 }

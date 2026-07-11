@@ -66,6 +66,7 @@ export class FixtureSimulator implements SimulatorControl {
       virtualTime: this.currentEvent?.occurredAt ?? this.startTime,
       currentEvent: this.currentEvent,
       nextSequence: this.cursor,
+      totalEvents: this.events.length,
     };
   }
 

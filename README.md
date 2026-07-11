@@ -14,9 +14,27 @@ pnpm db:reset
 pnpm dev
 ```
 
-Open <http://localhost:3000>, interpret and confirm a brief (the complete example is ready to use), then step through five deterministic simulator events. The timeline rejects a wrong model, an above-cap GBP offer, and an invalid-coupon offer before producing an alert for the EUR 76.40 offer and then emitting a low-stock update.
+Open <http://localhost:3000>, choose one of the three presentation briefs, send it, confirm the interpreted hard requirements, and step through the automatically selected deterministic scenario.
 
-No environment file or OpenAI API key is needed. Deterministic adapters and a repository-local SQLite path are the defaults. To use the optional OpenAI adapter later, copy `.env.example` to `.env.local` and configure `OPENAI_API_KEY` and `OPENAI_MODEL`.
+No environment file or OpenAI API key is needed for the deterministic text flow. Deterministic adapters and a repository-local SQLite path are the defaults. To enable the optional voice controls, copy `.env.example` to `.env.local` and configure `OPENAI_API_KEY`.
+
+## Presentation scope
+
+The live demo intentionally supports exactly three curated products. A fourth product remains blocked at confirmation instead of falling into an unverified generic flow.
+
+| Example | Hard variant | Delivered cap | Deterministic story |
+| --- | --- | ---: | --- |
+| Nike Dunk Low | EU 43 | EUR 80 | Wrong model, over-cap offer, and invalid coupon are rejected before a EUR 76.40 alert. |
+| Iittala Aalto Vase | 160 mm, clear glass | EUR 140 | A cheap 120 mm opal listing is rejected before a EUR 128.00 alert. |
+| MacBook Air M3 | 13-inch, 16 GB RAM, 512 GB SSD | EUR 1,300 | A cheap M2 8/256 listing is rejected before a EUR 1,238.00 alert. |
+
+For a reliable presentation, use the three **Try** buttons in the chat. Confirmation resets previous evidence, activates the matching scenario, and updates the event counter to that scenario's actual length. The scenario remains deterministic and can be repeated with **Reset**.
+
+## OpenAI voice
+
+With `VOICE_INTAKE_ENABLED=true` and `OPENAI_API_KEY` configured, the chat supports microphone dictation through `/api/voice/transcribe` and AI-generated speech through `/api/voice/speech`. The defaults are `gpt-4o-mini-transcribe`, `gpt-4o-mini-tts`, and the `marin` voice; both model IDs are configurable in `.env.local`.
+
+Dictation always lands in the textarea for review before it becomes a chat turn. Voice can propose a draft, but it cannot confirm hard constraints, activate a purchase mandate, or bypass the existing non-voice confirmation button. Set `VOICE_INTAKE_ENABLED=false` to remove audio without changing the text journey.
 
 ## Commands
 

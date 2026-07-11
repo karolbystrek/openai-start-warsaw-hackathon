@@ -25,14 +25,24 @@ export interface CheckpointApplicationDependencies {
   receipts: ReceiptProjection;
   briefInterpreter: BriefInterpreter;
   briefProjector: ConfirmedBriefProjector;
+  scenarioRequests?: readonly ShoppingRequest[];
+  scenarioResolver?: (request: ShoppingRequest) => {
+    initialRequest: ShoppingRequest;
+    runId: string;
+    simulator: SimulatorControl;
+  };
 }
 
 export class CheckpointApplication {
   private mutationTail: Promise<void> = Promise.resolve();
-  private activeRequest: ShoppingRequest;
+  private runtime: Pick<CheckpointApplicationDependencies, "initialRequest" | "runId" | "simulator">;
 
   constructor(private readonly dependencies: CheckpointApplicationDependencies) {
-    this.activeRequest = dependencies.initialRequest;
+    this.runtime = {
+      initialRequest: dependencies.initialRequest,
+      runId: dependencies.runId,
+      simulator: dependencies.simulator,
+    };
   }
 
   private async serializeMutation<T>(operation: () => Promise<T>): Promise<T> {
@@ -51,8 +61,9 @@ export class CheckpointApplication {
   }
 
   async getSimulationState(): Promise<SimulationState> {
-    const { runId, simulator, repository, receipts } = this.dependencies;
+    const { repository, receipts } = this.dependencies;
     const request = await this.loadCurrentRequest();
+    const { runId, simulator } = this.runtime;
     const processedEvents = [...await repository.listEvents(runId)];
     recoverSimulator(simulator, processedEvents);
     const decisions = [...await repository.listDecisionsForRun({
@@ -87,9 +98,20 @@ export class CheckpointApplication {
       const projected = this.dependencies.briefProjector.project(interpretation);
       if (!projected) return { interpretation, state: null };
 
-      this.activeRequest = ShoppingRequestSchema.parse({ ...projected, lifecycle: "ACTIVE" });
-      this.dependencies.simulator.reset();
-      await this.dependencies.repository.resetToRequest(this.activeRequest);
+      const selected = this.dependencies.scenarioResolver?.(projected) ?? this.runtime;
+      const { initialRequest, simulator } = selected;
+      const { repository } = this.dependencies;
+      const current = await repository.getCurrentRequest(initialRequest.id);
+      const activated = ShoppingRequestSchema.parse({
+        ...projected,
+        id: initialRequest.id,
+        version: (current?.version ?? 0) + 1,
+        lifecycle: "ACTIVE",
+        effectiveAt: initialRequest.effectiveAt,
+      });
+      simulator.reset();
+      this.runtime = selected;
+      await repository.resetToRequest(activated);
       return { interpretation, state: await this.getSimulationState() };
     });
   }
@@ -99,8 +121,9 @@ export class CheckpointApplication {
   }
 
   private async stepSimulationOnce(expectedSequence: number): Promise<SimulationState> {
-    const { runId, simulator, repository, matching, verification, pricing, policy } = this.dependencies;
+    const { repository, matching, verification, pricing, policy } = this.dependencies;
     await this.loadCurrentRequest();
+    const { runId, simulator } = this.runtime;
     recoverSimulator(simulator, await repository.listEvents(runId));
     if (simulator.getState().nextSequence !== expectedSequence) return this.getSimulationState();
     const event = simulator.step();
@@ -157,25 +180,33 @@ export class CheckpointApplication {
   }
 
   private async resetSimulationOnce(): Promise<SimulationState> {
-    const { simulator, repository } = this.dependencies;
+    const { repository } = this.dependencies;
     const request = await this.loadCurrentRequest();
+    const { simulator } = this.runtime;
     simulator.reset();
     await repository.resetToRequest(request);
     return this.getSimulationState();
   }
 
   private async loadCurrentRequest(effectiveAt?: string): Promise<ShoppingRequest> {
-    const { initialRequest, repository } = this.dependencies;
-    const fallback = this.activeRequest ?? initialRequest;
-    const current = await repository.getCurrentRequest(fallback.id, effectiveAt);
-    if (current) {
-      this.activeRequest = current;
-      return current;
+    const { initialRequest } = this.runtime;
+    const { repository, scenarioRequests, scenarioResolver } = this.dependencies;
+    const current = await repository.getCurrentRequest(initialRequest.id, effectiveAt);
+    if (current) return current;
+
+    if (scenarioResolver) {
+      for (const scenarioRequest of scenarioRequests ?? []) {
+        if (scenarioRequest.id === initialRequest.id) continue;
+        const persisted = await repository.getCurrentRequest(scenarioRequest.id, effectiveAt);
+        if (!persisted) continue;
+        this.runtime = scenarioResolver(persisted);
+        return persisted;
+      }
     }
-    await repository.saveRequest(fallback);
-    const seeded = await repository.getCurrentRequest(fallback.id, effectiveAt);
-    if (!seeded) throw new Error(`Could not load request ${fallback.id}.`);
-    this.activeRequest = seeded;
+
+    await repository.saveRequest(initialRequest);
+    const seeded = await repository.getCurrentRequest(initialRequest.id, effectiveAt);
+    if (!seeded) throw new Error(`Could not load request ${initialRequest.id}.`);
     return seeded;
   }
 }

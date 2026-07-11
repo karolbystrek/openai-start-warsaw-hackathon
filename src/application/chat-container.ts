@@ -1,5 +1,3 @@
-import { OpenAIBriefInterpreter } from "@/ai/openai-brief-interpreter";
-import { ResilientBriefInterpreter } from "@/ai/resilient-brief-interpreter";
 import { ShoppingChatApplication } from "@/application/chat-application";
 import { createDatabase } from "@/db/client";
 import { DrizzleCheckpointRepository } from "@/db/repositories/drizzle-checkpoint-repository";
@@ -8,17 +6,9 @@ import {
   DeterministicBriefInterpreter,
 } from "@/domain/brief/interpret";
 
-function createLiveInterpreter() {
-  if (!process.env.OPENAI_API_KEY || !process.env.OPENAI_MODEL) return undefined;
-  return new OpenAIBriefInterpreter();
-}
-
 function createShoppingChatApplication(): ShoppingChatApplication {
   const { db } = createDatabase();
-  const interpreter = new ResilientBriefInterpreter(
-    new DeterministicBriefInterpreter(),
-    createLiveInterpreter(),
-  );
+  const interpreter = new DeterministicBriefInterpreter();
   return new ShoppingChatApplication(
     interpreter,
     new ConfirmedShoppingRequestProjector(),

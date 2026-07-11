@@ -1,7 +1,6 @@
 import { checkpointApplication } from "@/application/container";
 import { formatMoney } from "@/app/format-money";
 import { ShoppingChat } from "@/app/shopping-chat";
-import { BriefIntake } from "@/app/brief-intake";
 import { SimulatorControls } from "@/app/simulator-controls";
 
 export const dynamic = "force-dynamic";
@@ -36,8 +35,9 @@ export default async function Home() {
         </div>
       </header>
 
-      <ShoppingChat />
-      <BriefIntake initialText={state.request.originalText} />
+      <ShoppingChat
+        voiceEnabled={process.env.VOICE_INTAKE_ENABLED !== "false" && Boolean(process.env.OPENAI_API_KEY)}
+      />
 
       <SimulatorControls
         complete={state.simulator.status === "COMPLETE"}
@@ -50,7 +50,7 @@ export default async function Home() {
           <h2>{state.request.product.brand} {state.request.product.model}</h2>
           <p className="brief">“{state.request.originalText}”</p>
           <dl>
-            <div><dt>Required size</dt><dd>{state.request.requirements.size}</dd></div>
+            <div><dt>Required variant</dt><dd>{state.request.requirements.size}</dd></div>
             <div><dt>Condition</dt><dd>{state.request.requirements.condition}</dd></div>
             <div><dt>Destination</dt><dd>{state.request.requirements.destinationCountry}</dd></div>
             <div><dt>Hard cap</dt><dd>{formatMoney(state.request.requirements.maximumLandedCost.currency, state.request.requirements.maximumLandedCost.minorUnits)}</dd></div>
@@ -130,7 +130,7 @@ export default async function Home() {
       <section className="timeline card">
         <div className="section-heading">
           <div><p className="card-label">Person B · simulator evidence</p><h2>Processed event timeline</h2></div>
-          <span className="event-count">{state.processedEvents.length} / 5 events</span>
+          <span className="event-count">{state.processedEvents.length} / {state.simulator.totalEvents} events</span>
         </div>
         {state.processedEvents.length ? (
           <ol>
