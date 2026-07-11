@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { checkpointApplication } from "@/application/container";
-import { AgentPaymentWorkflow } from "@/app/agent-payment-workflow";
 import { formatMoney } from "@/app/format-money";
 import { SimulatorControls } from "@/app/simulator-controls";
 import type { DecisionOutcome, SimulationEvent } from "@/domain/contracts";
@@ -137,14 +136,6 @@ export default async function Details() {
           ) : <p className="empty">A full cost appears when the offer has a valid pricing path.</p>}
         </article>
       </section>
-
-      <AgentPaymentWorkflow
-        key={decision?.id ?? state.request.id}
-        request={state.request}
-        processedEventCount={state.processedEvents.length}
-        latestEventId={state.processedEvents.at(-1)?.id ?? null}
-        decision={decision}
-      />
 
       <section className="timeline card">
         <div className="section-heading">
