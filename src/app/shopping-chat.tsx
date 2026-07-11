@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 
+import type { SimulationState } from "@/application/simulation-state";
 import { formatMoney } from "@/app/format-money";
 import { BirthdayOpportunity } from "@/app/birthday-opportunity";
-import type { SimulationState } from "@/application/simulation-state";
 import {
   VoiceShoppingCompanion,
   type VoiceBriefReview,
@@ -58,6 +58,13 @@ function assistantSummary(result: InterpretationResponse): string {
   return "The brief is complete. Review the hard constraints below and confirm them before monitoring is activated.";
 }
 
+function eventTitle(state: SimulationState): string {
+  const event = state.simulator.currentEvent;
+  if (!event) return "Waiting for the first merchant update";
+  if (event.type === "OFFER_OBSERVED") return event.offer.title;
+  return event.type.replaceAll("_", " ").toLowerCase().replace(/^./, (letter) => letter.toUpperCase());
+}
+
 function reactionTitle(decision: DecisionRecord): string {
   switch (decision.outcome) {
     case "ALERT": return "I found a deal that matches your requirements";
@@ -66,6 +73,10 @@ function reactionTitle(decision: DecisionRecord): string {
     case "ESCALATE": return "I need more information before acting on this offer";
     case "IGNORE": return "I checked this update and kept monitoring";
   }
+}
+
+function readableReason(reason: string): string {
+  return reason.replaceAll("_", " ").toLowerCase().replace(/^./, (letter) => letter.toUpperCase());
 }
 
 async function readResponse<T>(response: Response): Promise<T> {
@@ -378,6 +389,48 @@ export function ShoppingChat() {
           ) : null}
           {confirmedRequest && draft?.product.brand === "Nike" && draft.product.model === "Dunk Low" ? (
             <BirthdayOpportunity requestId={confirmedRequest.id} />
+          ) : null}
+          {monitoringState && (confirmedRequest || monitoringState.processedEvents.length > 0) ? (
+            <div className="chat-message assistant monitor-message">
+              <span>Monitoring update</span>
+              <div className={`monitor-update ${monitoringState.currentDecision?.outcome.toLowerCase() ?? "waiting"}`}>
+                <div className="monitor-update-heading">
+                  <div>
+                    <small>{monitoringState.currentDecision ? "Latest engine reaction" : "Monitoring active"}</small>
+                    <h2>{monitoringState.currentDecision ? reactionTitle(monitoringState.currentDecision) : eventTitle(monitoringState)}</h2>
+                  </div>
+                  {monitoringState.currentDecision ? (
+                    <span>{monitoringState.currentDecision.outcome}</span>
+                  ) : <span>WATCHING</span>}
+                </div>
+                {monitoringState.currentDecision ? (
+                  <>
+                    <p className="monitor-offer">{eventTitle(monitoringState)}</p>
+                    <dl>
+                      {monitoringState.currentDecision.landedCost ? (
+                        <div>
+                          <dt>Total delivered</dt>
+                          <dd>{formatMoney(
+                            monitoringState.currentDecision.landedCost.total.currency,
+                            monitoringState.currentDecision.landedCost.total.minorUnits,
+                          )}</dd>
+                        </div>
+                      ) : null}
+                      <div><dt>Why</dt><dd>{readableReason(monitoringState.currentDecision.primaryReason)}</dd></div>
+                    </dl>
+                    {(monitoringState.currentDecision.outcome === "ALERT" || monitoringState.currentDecision.outcome === "BUY_SIMULATED") ? (
+                      <ul className="monitor-passes">
+                        {monitoringState.currentDecision.requirements
+                          .filter((requirement) => requirement.result === "PASS")
+                          .slice(0, 4)
+                          .map((requirement) => <li key={requirement.requirement}>✓ {readableReason(requirement.requirement)}</li>)}
+                      </ul>
+                    ) : null}
+                  </>
+                ) : <p className="monitor-offer">Open details to send a preconfigured merchant event.</p>}
+                <Link className="monitor-details-link" href="/details">Open event details →</Link>
+              </div>
+            </div>
           ) : null}
           <div className="conversation-end" ref={conversationEndRef} />
         </div>
