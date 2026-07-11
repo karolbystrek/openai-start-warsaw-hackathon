@@ -332,16 +332,33 @@ dt { color: var(--muted); } dd { margin: 0; font-weight: 700; text-align: right;
 .chat-safety-note { margin: 14px 0 0; color: #637895; font-size: .8rem; line-height: 1.45; }
 .chat-page .confirm-brief { width: 100%; margin-top: 16px; border: 1px solid rgba(255, 255, 255, .4); border-radius: 12px; padding: 12px 14px; background: linear-gradient(145deg, #368eff, #1459d4); color: white; cursor: pointer; font-weight: 800; box-shadow: inset 0 1px 1px rgba(255, 255, 255, .45), 0 8px 20px rgba(25, 98, 216, .2); }
 .chat-page .confirm-brief:disabled { opacity: .48; cursor: not-allowed; box-shadow: none; }
-.birthday-opportunity { width: min(100%, 590px); display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-self: flex-start; padding: 18px; border: 1px solid rgba(255, 255, 255, .9); border-radius: 20px; background: linear-gradient(145deg, rgba(255, 249, 225, .9), rgba(255, 255, 255, .68)); box-shadow: inset 0 1px 0 white, 0 16px 42px rgba(115, 91, 32, .11); backdrop-filter: blur(22px) saturate(150%); }
-.opportunity-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 15px; background: linear-gradient(145deg, #ffe083, #f1b83f); color: #553c08; font-size: .78rem; font-weight: 1000; box-shadow: inset 0 1px 1px rgba(255, 255, 255, .65); }
+.merchant-opportunity { width: min(100%, 650px); align-self: flex-start; padding: 20px; border: 1px solid rgba(255,255,255,.92); border-radius: 20px; background: linear-gradient(145deg, rgba(255,255,255,.86), rgba(235,246,255,.7)); box-shadow: 0 18px 44px rgba(42,91,151,.12); backdrop-filter: blur(22px); }
+.merchant-opportunity-heading { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+.merchant-opportunity-heading h2 { margin: 3px 0 0; font-size: 1.15rem; }
+.evidence-chip { padding: 5px 8px; border-radius: 999px; background: #e5f1ff; color: #2768b4; font-size: .65rem; font-weight: 850; white-space: nowrap; }
+.merchant-comparison { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 15px; }
+.merchant-comparison.has-future { grid-template-columns: repeat(2, minmax(0,1fr)); }
+.merchant-card { display: grid; padding: 15px; border: 1px solid rgba(61,112,174,.14); border-radius: 14px; background: rgba(255,255,255,.72); }
+.merchant-card.future { border-color: #e2bc58; background: rgba(255,248,221,.8); }
+.merchant-card.future.active { border-color: #5ab48a; background: rgba(230,248,238,.88); }
+.merchant-card > span { color: #67809f; font-size: .67rem; font-weight: 900; text-transform: uppercase; }
+.merchant-card strong { margin-top: 6px; font-size: 1rem; }
+.merchant-card small { color: #7790ad; }
+.merchant-card b { margin-top: 12px; color: #135fc4; font-size: 1.05rem; }
+.merchant-card p { margin: 6px 0 0; color: #607794; font-size: .75rem; line-height: 1.4; }
+.opportunity-actions.three { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin-top: 13px; }
+.opportunity-actions.three button, .scheduled-recheck button { border: 1px solid rgba(50,112,190,.22); border-radius: 10px; padding: 9px; background: rgba(255,255,255,.8); color: #285682; cursor: pointer; font: inherit; font-size: .73rem; font-weight: 850; }
+.opportunity-actions.three button.selected { border-color: #2478e5; background: #e3f0ff; box-shadow: inset 0 0 0 1px #2478e5; }
+.opportunity-result { margin: 12px 0 0; color: #5d7490; font-size: .77rem; }
+.scheduled-recheck { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 13px; padding: 12px; border-radius: 12px; background: #fff5d5; }
+.scheduled-recheck div { display: grid; }
+.scheduled-recheck small { color: #806828; }
+.scheduled-recheck button { background: #76570c; color: white; }
+.recheck-receipt { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 13px; padding: 13px; border-radius: 12px; background: #e6f7ed; color: #225b41; }
+.recheck-receipt strong, .recheck-receipt p { width: 100%; }
+.recheck-receipt span { padding: 4px 7px; border-radius: 999px; background: white; font-size: .68rem; font-weight: 800; }
+.recheck-receipt p { margin: 3px 0 0; font-size: .75rem; }
 .opportunity-label { margin: 0 0 4px; color: #8a681d; font-size: .67rem; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; }
-.birthday-opportunity h3 { margin: 0; color: #3e3218; font-size: 1.05rem; }
-.birthday-opportunity div > p:not(.opportunity-label) { margin: 8px 0 0; color: #725f36; font-size: .84rem; line-height: 1.5; }
-.opportunity-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 13px; }
-.opportunity-actions small { color: #8d7b55; font-size: .7rem; }
-.opportunity-action { margin-top: 13px; border: 1px solid rgba(255, 255, 255, .7); border-radius: 999px; padding: 9px 13px; background: #73540d; color: white; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 850; }
-.opportunity-actions .opportunity-action { margin-top: 0; }
-.opportunity-action.secondary { border-color: #b59d68; background: transparent; color: #73540d; }
 .chat-page .chat-composer { position: fixed; z-index: 5; left: 50%; bottom: 28px; transform: translateX(-50%); width: min(760px, calc(100% - 32px)); min-height: 66px; display: flex; align-items: flex-end; gap: 10px; overflow: hidden; padding: 10px 10px 10px 20px; border: 1px solid rgba(255, 255, 255, .92); border-radius: 24px; background: linear-gradient(135deg, rgba(255, 255, 255, .7), rgba(232, 244, 255, .46)); box-shadow: inset 0 1px 1px white, inset 0 -1px 0 rgba(64, 126, 200, .08), 0 22px 65px rgba(37, 92, 162, .2); backdrop-filter: blur(28px) saturate(170%); }
 .chat-page .chat-composer::before { content: ""; position: absolute; inset: 0 16% 55% 4%; border-radius: inherit; background: linear-gradient(100deg, rgba(255, 255, 255, .72), rgba(255, 255, 255, 0)); pointer-events: none; }
 .chat-page .chat-composer textarea { position: relative; min-height: 44px; max-height: 130px; flex: 1; resize: none; border: 0; outline: 0; padding: 12px 0 8px; background: transparent; color: #172b49; line-height: 1.45; }
@@ -405,6 +422,7 @@ dt { color: var(--muted); } dd { margin: 0; font-weight: 700; text-align: right;
   .chat-page .chat-message { max-width: 92%; }
   .chat-page .chat-brief-message { max-width: 100%; }
   .chat-page .chat-composer { bottom: 14px; width: calc(100% - 24px); }
+  .merchant-comparison.has-future, .opportunity-actions.three { grid-template-columns: 1fr; }
 }
 
 /* Deterministic event lab and user-visible monitoring results */

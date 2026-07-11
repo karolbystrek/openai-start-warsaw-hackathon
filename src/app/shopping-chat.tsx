@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 
+import { formatMoney } from "@/app/format-money";
+import { MerchantOpportunity } from "@/app/merchant-opportunity";
 import type { SimulationState } from "@/application/simulation-state";
 import { formatMoney } from "@/app/format-money";
 import { BirthdayOpportunity } from "@/app/birthday-opportunity";
@@ -472,6 +474,9 @@ export function ShoppingChat({ initialChatId = null }: { initialChatId?: string 
                 <Link className="monitor-details-link" href="/details">Open event details →</Link>
               </div>
             </div>
+          ) : null}
+          {confirmedRequest && selectedProfile ? (
+            <MerchantOpportunity productId={selectedProfile.id} requestId={confirmedRequest.id} />
           ) : null}
           <div className="conversation-end" ref={conversationEndRef} />
         </div>

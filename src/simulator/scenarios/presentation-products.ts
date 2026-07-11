@@ -26,6 +26,7 @@ type PresentationCase = {
     deliveryMinor: number;
   };
   valid: {
+    merchantId: string;
     title: string;
     itemMinor: number;
     deliveryMinor: number;
@@ -44,6 +45,7 @@ const cases: readonly PresentationCase[] = [
       deliveryMinor: 900,
     },
     valid: {
+      merchantId: "iittala-official",
       title: "Iittala Aalto Vase 160 mm Clear Glass",
       itemMinor: 11_900,
       deliveryMinor: 900,
@@ -60,6 +62,7 @@ const cases: readonly PresentationCase[] = [
       deliveryMinor: 1_900,
     },
     valid: {
+      merchantId: "mediaexpert-pl",
       title: "Apple MacBook Air 13-inch M3 16 GB RAM 512 GB SSD",
       itemMinor: 119_900,
       deliveryMinor: 3_900,
@@ -129,10 +132,12 @@ const createScenario = (definition: PresentationCase): ScenarioFixture => {
       schemaVersion: 1,
       id: `${definition.id}-offer-${kind}`,
       listingId: `${definition.id}-listing-${kind}`,
-      merchantId: `${definition.id}-merchant-${kind}`,
+      merchantId: isValid ? definition.valid.merchantId : `${definition.id}-merchant-${kind}`,
       sellerId: `${definition.id}-seller-${kind}`,
       title: input.title,
-      listingRef: `sim://${definition.id}/${kind}`,
+      listingRef: isValid
+        ? `https://${definition.valid.merchantId === "mediaexpert-pl" ? "mediaexpert.pl" : "iittala.com"}/demo/${definition.id}`
+        : `sim://${definition.id}/${kind}`,
       identifiers: [{
         type: "MPN",
         value: isValid ? profile.identifier.value : definition.wrong.identifier,
