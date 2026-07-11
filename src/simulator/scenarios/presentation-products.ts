@@ -13,7 +13,7 @@ import { presentationProductById, type PresentationProductId } from "@/domain/ca
 const START = "2026-07-13T08:00:00.000Z";
 const WRONG_TIME = "2026-07-13T08:01:00.000Z";
 const VALID_TIME = "2026-07-13T08:02:00.000Z";
-const FIXTURE_VERSION = "presentation-products-v1";
+const FIXTURE_VERSION = "presentation-products-v2";
 
 type PresentationCase = {
   id: Exclude<PresentationProductId, "shoes">;
@@ -83,7 +83,7 @@ const makeEvidence = (offer: OfferSnapshot): EvidenceBundle => {
     schemaVersion: 1,
     id: `evidence-${offer.id}`,
     offerId: offer.id,
-    seller: item("seller", "VERIFIED_MERCHANT"),
+    seller: item("seller", "MERCHANT_OWNED"),
     stock: item("stock", "IN_STOCK"),
     condition: item("condition", "NEW"),
     destination: item("destination", "PL"),

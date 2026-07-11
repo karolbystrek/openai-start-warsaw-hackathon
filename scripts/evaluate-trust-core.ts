@@ -1,5 +1,7 @@
 import { CachedAmbiguousMatchAssessor } from "@/ai/cached-ambiguous-match";
 import { DeliveryOptionSchema, EvidenceBundleSchema, OfferSnapshotSchema, ShoppingRequestSchema, type DecisionRecord, type Mandate, type SimulationEvent } from "@/domain/contracts";
+import { ConfirmedShoppingRequestProjector, DeterministicBriefInterpreter } from "@/domain/brief/interpret";
+import { presentationProducts } from "@/domain/catalog/presentation-products";
 import { StagedMatchService } from "@/domain/matching/staged-matcher";
 import { DeterministicPolicyEvaluator } from "@/domain/policy";
 import { DeterministicLandedCostCalculator, headlineLandedCostRules } from "@/domain/pricing";
@@ -8,6 +10,7 @@ import { calculateEvaluationMetrics, type EvaluationExpectation } from "../evalu
 import { adversarialGroundTruth, headlineGroundTruth, purchaseGroundTruth } from "../evaluation/scenarios/ground-truth";
 import { adversarialScenarios } from "@/simulator/scenarios/adversarial";
 import { headlineScenario } from "@/simulator/scenarios/headline";
+import { presentationProductScenarios } from "@/simulator/scenarios/presentation-products";
 
 const matching = new StagedMatchService(undefined, new CachedAmbiguousMatchAssessor());
 const verification = new DeterministicVerificationService();
@@ -62,6 +65,45 @@ const evaluateFixtures = async (): Promise<DecisionRecord[]> => {
     }
   }
   return decisions;
+};
+
+const verifyPresentationDemoFixtures = async (): Promise<void> => {
+  const interpreter = new DeterministicBriefInterpreter(() => headlineScenario.virtualStartAt);
+  const projector = new ConfirmedShoppingRequestProjector();
+  const fixtures = new Map([
+    ["shoes", headlineScenario],
+    ...presentationProductScenarios.map((scenario) => [scenario.request.product.category === "home-decor" ? "vase" : "macbook", scenario] as const),
+  ]);
+
+  for (const profile of presentationProducts) {
+    const fixture = fixtures.get(profile.id);
+    assertManual(fixture, `the ${profile.id} UI prompt must have a presentation event stream`);
+    const interpretation = await interpreter.interpret(profile.brief);
+    const projected = projector.project(interpretation);
+    assertManual(projected, `the ${profile.id} UI prompt must interpret without blocking ambiguities`);
+    const request = ShoppingRequestSchema.parse({
+      ...projected,
+      lifecycle: "ACTIVE",
+      effectiveAt: fixture.virtualStartAt,
+    });
+    const decisions: DecisionRecord[] = [];
+    for (const event of fixture.events) {
+      if (event.type !== "OFFER_OBSERVED") continue;
+      decisions.push(await evaluateEvent(event, request, decisions));
+    }
+    const qualifying = decisions.find((decision) => decision.outcome === "ALERT");
+    assertManual(qualifying, `the ${profile.id} UI prompt must have at least one qualifying offer event`);
+    assertManual(
+      qualifying.requirements.every((requirement) => requirement.result === "PASS"),
+      `the ${profile.id} qualifying event must pass every hard requirement`,
+    );
+    assertManual(
+      qualifying.landedCost !== null
+        && qualifying.landedCost.total.currency === request.requirements.maximumLandedCost.currency
+        && qualifying.landedCost.total.minorUnits <= request.requirements.maximumLandedCost.minorUnits,
+      `the ${profile.id} qualifying event must remain within the delivered-price cap`,
+    );
+  }
 };
 
 const evaluatePurchases = async (): Promise<DecisionRecord[]> => {
@@ -270,6 +312,7 @@ const verifyPricingBoundaries = async (): Promise<void> => {
 };
 
 const main = async (): Promise<void> => {
+  await verifyPresentationDemoFixtures();
   await verifyPricingBoundaries();
   const decisions = [...await evaluateFixtures(), ...await evaluatePurchases()];
   const expectations = flattenExpectations([headlineGroundTruth, ...adversarialGroundTruth, purchaseGroundTruth]);
