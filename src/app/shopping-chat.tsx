@@ -238,7 +238,13 @@ export function ShoppingChat() {
           value={input}
         />
         <button className="send-button" type="submit" disabled={!input.trim() || pending !== null} aria-label="Send message">
-          {pending === "interpret" ? <span className="send-loader" /> : <span aria-hidden="true">↑</span>}
+          {pending === "interpret" ? (
+            <span className="send-loader" />
+          ) : (
+            <svg aria-hidden="true" viewBox="0 0 20 20">
+              <path d="M10 15V5m0 0L6 9m4-4 4 4" />
+            </svg>
+          )}
         </button>
       </form>
       {error ? <p className="chat-error" role="alert">{error}</p> : null}
