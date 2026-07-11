@@ -106,7 +106,11 @@ export class DeterministicLandedCostCalculator implements LandedCostCalculator {
     });
   }
 
-  select(request: ShoppingRequest, inputs: readonly PricingOfferInput[]): PricingSelection {
+  select(
+    request: ShoppingRequest,
+    inputs: readonly PricingOfferInput[],
+    fxQuoteOverrides: readonly FxQuote[] = [],
+  ): PricingSelection {
     const paths = inputs.flatMap(({ offer, evidence, sellerTrustRank = 0, preferredDeliveryMethods }) => {
       const deliveries = this.deliveryOptions(offer);
       const coupons = this.couponCandidates(offer, evidence);
@@ -120,6 +124,7 @@ export class DeterministicLandedCostCalculator implements LandedCostCalculator {
           couponSet,
           sellerTrustRank,
           this.preferenceRank(request, delivery, preferredDeliveryMethods),
+          fxQuoteOverrides,
         ),
       ));
     });
@@ -151,6 +156,7 @@ export class DeterministicLandedCostCalculator implements LandedCostCalculator {
     coupons: readonly CouponCandidate[],
     sellerTrustRank: number,
     preferredMethodRank: number,
+    fxQuoteOverrides: readonly FxQuote[],
   ): PricingPath {
     const couponCodes = coupons.map((coupon) => coupon.code).sort();
     const id = `pricing-${offer.id}-${delivery.id}-${couponCodes.join("_") || "none"}`;
@@ -183,7 +189,7 @@ export class DeterministicLandedCostCalculator implements LandedCostCalculator {
         couponCodes,
         status: "VALID",
         reasonCodes: [],
-        landedCost: this.buildLandedCost(request, offer, evidence, delivery, coupons, id),
+        landedCost: this.buildLandedCost(request, offer, evidence, delivery, coupons, id, fxQuoteOverrides),
         ...audit,
       };
     } catch (error) {
@@ -282,13 +288,14 @@ export class DeterministicLandedCostCalculator implements LandedCostCalculator {
     deliveryOption: DeliveryOption,
     coupons: readonly CouponCandidate[],
     pathId: string,
+    fxQuoteOverrides: readonly FxQuote[],
   ): LandedCost {
     if (deliveryOption.price === null) throw new Error(`Delivery price is unknown for ${deliveryOption.id}.`);
     const budgetCurrency = request.requirements.maximumLandedCost.currency;
     const sourceCurrencies = new Set([offer.itemPrice.currency, deliveryOption.price.currency]);
     if (sourceCurrencies.size > 1) throw new Error("item and delivery currencies differ");
     const sourceCurrency = offer.itemPrice.currency;
-    const quote = this.findQuote(sourceCurrency, budgetCurrency);
+    const quote = this.findQuote(sourceCurrency, budgetCurrency, fxQuoteOverrides);
     if (quote) this.assertFreshQuote(quote, offer.observedAt);
     const lines: LandedCostLine[] = [];
     const item = this.convert(offer.itemPrice, budgetCurrency, quote);
@@ -354,9 +361,13 @@ export class DeterministicLandedCostCalculator implements LandedCostCalculator {
     });
   }
 
-  private findQuote(baseCurrency: string, quoteCurrency: string): FxQuote | null {
+  private findQuote(
+    baseCurrency: string,
+    quoteCurrency: string,
+    fxQuoteOverrides: readonly FxQuote[],
+  ): FxQuote | null {
     if (baseCurrency === quoteCurrency) return null;
-    const quote = this.rules.fxQuotes.find(
+    const quote = [...fxQuoteOverrides, ...this.rules.fxQuotes].find(
       (candidate) => candidate.baseCurrency === baseCurrency && candidate.quoteCurrency === quoteCurrency,
     );
     if (!quote) throw new Error(`Missing FX quote for ${baseCurrency}/${quoteCurrency}.`);

@@ -35,6 +35,11 @@ export interface LandedCostCalculator {
     evidence: EvidenceBundle;
     sellerTrustRank?: number;
     preferredDeliveryMethods?: readonly string[];
+  }[], fxQuoteOverrides?: readonly {
+    baseCurrency: string;
+    quoteCurrency: string;
+    rate: string;
+    observedAt: string;
   }[]): PricingSelection;
 }
 
@@ -85,5 +90,8 @@ export interface CheckpointRepository {
   listEvents(runId: string): Promise<readonly SimulationEvent[]>;
   saveDecision(decision: DecisionRecord): Promise<void>;
   listDecisions(requestId: string): Promise<readonly DecisionRecord[]>;
+  saveMandate(mandate: Mandate): Promise<void>;
+  getCurrentMandate(requestId: string, requestVersion: number, effectiveAt?: string): Promise<Mandate | null>;
   saveOrder(order: SimulatedOrder): Promise<void>;
+  listOrders(requestId: string): Promise<readonly SimulatedOrder[]>;
 }

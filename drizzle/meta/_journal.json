@@ -15,6 +15,13 @@
       "when": 1783773180966,
       "tag": "0001_demonic_madrox",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1783776849936,
+      "tag": "0002_serious_warpath",
+      "breakpoints": true
     }
   ]
 }

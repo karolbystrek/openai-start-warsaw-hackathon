@@ -56,6 +56,20 @@ export const decisionRecords = sqliteTable("decision_records", {
   ),
 ]);
 
+export const mandateVersions = sqliteTable("mandate_versions", {
+  id: text("id").notNull(),
+  version: integer("version").notNull(),
+  requestId: text("request_id").notNull(),
+  requestVersion: integer("request_version").notNull(),
+  status: text("status").notNull(),
+  effectiveAt: text("effective_at").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  payload: text("payload").notNull(),
+  ...timestamps,
+}, (table) => [
+  uniqueIndex("mandate_versions_id_version_idx").on(table.id, table.version),
+]);
+
 export const simulatedOrders = sqliteTable("simulated_orders", {
   id: text("id").primaryKey(),
   idempotencyKey: text("idempotency_key").notNull().unique(),

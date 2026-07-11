@@ -1,6 +1,12 @@
 import { z } from "zod";
 
-import { DecisionRecordSchema, ShoppingRequestSchema, SimulationEventSchema } from "@/domain/contracts";
+import {
+  DecisionRecordSchema,
+  MandateSchema,
+  ShoppingRequestSchema,
+  SimulatedOrderSchema,
+  SimulationEventSchema,
+} from "@/domain/contracts";
 
 export const SimulationStateSchema = z.object({
   request: ShoppingRequestSchema,
@@ -14,6 +20,8 @@ export const SimulationStateSchema = z.object({
   processedEvents: z.array(SimulationEventSchema),
   decisions: z.array(DecisionRecordSchema),
   currentDecision: DecisionRecordSchema.nullable(),
+  mandate: MandateSchema.nullable(),
+  order: SimulatedOrderSchema.nullable(),
   receipt: z.object({ concise: z.string(), expanded: z.array(z.string()) }).nullable(),
 });
 

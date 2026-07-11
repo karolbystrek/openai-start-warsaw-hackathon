@@ -43,6 +43,7 @@ export default async function Details() {
         maximumLandedCostMinor={state.request.requirements.maximumLandedCost.minorUnits}
         mandate={state.mandate}
         order={state.order}
+        requestActive={state.request.lifecycle === "ACTIVE"}
       />
 
       <RequestControls request={state.request} />

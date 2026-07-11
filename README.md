@@ -19,7 +19,9 @@ pnpm dev
 
 The repository includes `.nvmrc` pinned to Node.js 22.22.2. If `pnpm` is missing or the shell reports Node.js 18, run the three bootstrap commands above before installing dependencies.
 
-Open <http://localhost:3000>, interpret and confirm a brief (the complete example is ready to use), then step through five deterministic simulator events. The timeline rejects a wrong model, an above-cap GBP offer, and an invalid-coupon offer before producing an alert for the EUR 76.40 offer and then emitting a low-stock update.
+Open <http://localhost:3000>, interpret and confirm a brief (the complete example is ready to use), then open the details view. You may explicitly activate the scoped one-time purchase mandate before stepping through five deterministic simulator events. The timeline rejects a wrong model, an above-cap GBP offer, and an invalid-coupon offer, alerts on the EUR 76.40 offer, and performs one simulated purchase only after the final fresh low-stock update satisfies the active mandate. Without consent, the alert journey remains unchanged.
+
+The details view also supports pausing, resuming, and revoking monitoring. Each lifecycle transition creates an immutable request version; pausing or revoking prevents event processing and immediately revokes active purchase consent.
 
 No environment file or OpenAI API key is needed. Deterministic adapters and a repository-local SQLite path are the defaults. To use the optional OpenAI adapter later, copy `.env.example` to `.env.local` and configure `OPENAI_API_KEY` and `OPENAI_MODEL`.
 

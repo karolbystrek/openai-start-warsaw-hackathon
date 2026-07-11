@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation";
 export function SimulatorControls({
   complete,
   nextSequence,
+  requestActive,
 }: {
   complete: boolean;
   nextSequence: number;
+  requestActive: boolean;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState<"step" | "reset" | null>(null);
@@ -39,8 +41,8 @@ export function SimulatorControls({
   return (
     <div className="control-area">
       <div className="controls" aria-label="Simulation controls">
-        <button type="button" onClick={() => perform("step")} disabled={pending !== null || complete}>
-          {pending === "step" ? "Stepping…" : complete ? "Scenario complete" : "Step event"}
+        <button type="button" onClick={() => perform("step")} disabled={pending !== null || complete || !requestActive}>
+          {pending === "step" ? "Stepping…" : complete ? "Scenario complete" : !requestActive ? "Monitoring inactive" : "Step event"}
         </button>
         <button className="secondary" type="button" onClick={() => perform("reset")} disabled={pending !== null}>
           {pending === "reset" ? "Resetting…" : "Reset"}

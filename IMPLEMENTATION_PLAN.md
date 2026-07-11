@@ -480,14 +480,15 @@ If no microphone or API key is available, the existing text-brief path works unc
 
 ### Phase 3 — Controlled autonomy
 
-- [ ] Implement immutable mandate versions and current mandate status.
-- [ ] Implement explicit mandate confirmation, review, and immediate revocation.
-- [ ] Enforce item, request-version, quantity, price, merchant, condition, time, and one-purchase mandate scope.
-- [ ] Implement a serialized pre-purchase recheck using current offer, stock, coupon, FX, request, and mandate evidence.
-- [ ] Implement idempotent simulated-order creation and mandate consumption.
-- [ ] Build mandate controls and the simulated purchase receipt UI.
+- [x] Implement immutable mandate versions and current mandate status.
+- [x] Implement explicit mandate confirmation, review, and immediate revocation.
+- [x] Enforce item, request-version, quantity, price, merchant, condition, time, and one-purchase mandate scope.
+- [x] Implement a serialized pre-purchase recheck using current offer, stock, coupon, FX, request, and mandate evidence.
+- [x] Implement idempotent simulated-order creation and mandate consumption.
+- [x] Build mandate controls and the simulated purchase receipt UI.
 - [x] Add reproducible manual evaluation for valid, expired, revoked, mismatched, consumed, and ambiguous mandates.
-- [ ] **Exit verification:** Demonstrate one purchase under valid consent and demonstrate that every invalid or uncertain consent case is blocked or escalated.
+- [x] **Exit verification:** Demonstrate one purchase under valid consent and demonstrate that every invalid or uncertain consent case is blocked or escalated.
+  - The five-event browser flow ends in one EUR 76.40 simulated purchase after fresh low-stock evidence. Replaying the final step keeps one order, revocation produces no order, and the frozen manual evaluator covers expired, consumed, mismatched, and uncertain mandates.
 
 ### Phase 4 — Adversarial hardening
 
@@ -635,20 +636,21 @@ tests/e2e/
 Checklist:
 
 - [x] Scaffold Next.js, shared styling/components, SQLite/Drizzle, migrations, and repository adapters.
-- [ ] Implement request creation, interpreted-brief confirmation, activation, pause, and revocation flows.
+- [x] Implement request creation, interpreted-brief confirmation, activation, pause, and revocation flows.
 - [x] Implement `evaluate-offer.ts` using typed matching, verification, pricing, policy, audit, and persistence interfaces.
   - The use case is implemented under `CheckpointApplication` and `EvaluationRepository`; naming differs from the proposed filename, while the typed orchestration and persistence boundary are complete.
-- [ ] Implement serialized `recheck-and-buy.ts`, idempotent simulated-order storage, and mandate consumption.
-- [ ] Build request, simulator controls, event timeline, verification, landed-cost, decision, mandate, and receipt views.
-  - Request, controls, current event, checks, landed cost, decision, and receipt are present. Full timeline and mandate/purchase views remain.
+- [x] Implement serialized `recheck-and-buy.ts`, idempotent simulated-order storage, and mandate consumption.
+  - The use case is implemented inside `CheckpointApplication` and the transactional repository boundary rather than a separately named file.
+- [x] Build request, simulator controls, event timeline, verification, landed-cost, decision, mandate, and receipt views.
+  - The chat remains focused on request intake; the details view contains lifecycle and mandate controls, the full event timeline, verification results, landed cost, decision checks, audit receipt, and simulated purchase receipt.
 - [ ] Build the evaluation dashboard from Person A's metrics and Person B's ground-truth scenarios.
 - [x] Maintain in-memory stubs for unavailable Person A or B services so UI and orchestration work can continue asynchronously.
 - [ ] Replace stubs with real adapters at each convergence checkpoint and add a contract test for every replacement.
   - Real brief interpretation, staged matching, verification, landed-cost, policy, notification, and receipt services are integrated. Remaining fixture adapters are retained only for isolated checkpoint/manual use; automated contract tests remain prohibited by repository guidance.
 - [ ] Own the clean-state reset command, demo runbook, Playwright journey, and final rehearsal.
   - Reset command and local run instructions exist; reset is safe with running SQLite connections and passed multi-process smoke checks. A committed Playwright journey and final rehearsal remain.
-- [ ] **Track verification:** The app can run the full headline journey first with stubs and then with real services, without changing UI-facing contracts.
-  - The headline journey passes with real Person A services and Person B brief/matching services. Purchase and mandate integration remains before the complete track can be checked.
+- [x] **Track verification:** The app can run the full headline journey first with stubs and then with real services, without changing UI-facing contracts.
+  - The real-service browser journey passes from request monitoring through deceptive-offer rejection, alert, fresh low-stock recheck, and one idempotent simulated purchase.
 
 Person C can begin immediately after the shared contract checkpoint using one fixed event fixture, one fixed decision record, and in-memory repositories.
 
@@ -688,10 +690,10 @@ Do not wait until all three tracks are finished. Merge or rebase frequently, but
 
 #### Checkpoint 3 — Controlled purchase slice
 
-- [ ] Integrate mandate validation and authorization from Person A.
-- [ ] Feed current stock, coupon, FX, and offer events from Person B into the recheck.
-- [ ] Integrate transaction, revocation, idempotency, and purchase UI from Person C.
-- [ ] **Checkpoint verification:** The valid mandate buys once; expired, revoked, consumed, changed, or uncertain conditions block purchase.
+- [x] Integrate mandate validation and authorization from Person A.
+- [x] Feed current stock, coupon, FX, and offer events from Person B into the recheck.
+- [x] Integrate transaction, revocation, idempotency, and purchase UI from Person C.
+- [x] **Checkpoint verification:** The valid mandate buys once; expired, revoked, consumed, changed, or uncertain conditions block purchase.
 
 #### Optional checkpoint — Time-aware opportunity slice
 
