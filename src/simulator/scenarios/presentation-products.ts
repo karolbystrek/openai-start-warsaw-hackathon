@@ -136,7 +136,7 @@ const createScenario = (definition: PresentationCase): ScenarioFixture => {
       sellerId: `${definition.id}-seller-${kind}`,
       title: input.title,
       listingRef: isValid
-        ? `https://${definition.valid.merchantId === "mediaexpert-pl" ? "mediaexpert.pl" : "iittala.com"}/demo/${definition.id}`
+        ? profile.productUrl
         : `sim://${definition.id}/${kind}`,
       identifiers: [{
         type: "MPN",

@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 import { formatMoney } from "@/app/format-money";
-import { MerchantOpportunity } from "@/app/merchant-opportunity";
+import { merchantName, recommendationReasons } from "@/app/product-presentation";
 import type { SimulationState } from "@/application/simulation-state";
 import { BirthdayOpportunity } from "@/app/birthday-opportunity";
 import { chatAssistantSummary } from "@/application/chat-application";
@@ -48,13 +48,6 @@ const initialMessages: ChatMessage[] = [{
   content: "Tell me what you want to buy. I’ll separate hard requirements from preferences and flag anything that needs clarification.",
 }];
 
-function eventTitle(state: SimulationState): string {
-  const event = state.simulator.currentEvent;
-  if (!event) return "Waiting for the first merchant update";
-  if (event.type === "OFFER_OBSERVED") return event.offer.title;
-  return event.type.replaceAll("_", " ").toLowerCase().replace(/^./, (letter) => letter.toUpperCase());
-}
-
 function reactionTitle(decision: DecisionRecord): string {
   switch (decision.outcome) {
     case "ALERT": return "I found a deal that matches your requirements";
@@ -79,7 +72,6 @@ async function readResponse<T>(response: Response): Promise<T> {
 export function ShoppingChat({ initialChatId = null }: { initialChatId?: string | null }) {
   const router = useRouter();
   const conversationEndRef = useRef<HTMLDivElement>(null);
-  const announcedDecisionIds = useRef(new Set<string>());
   const loadedChatIdRef = useRef<string | null>(null);
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
@@ -141,17 +133,6 @@ export function ShoppingChat({ initialChatId = null }: { initialChatId?: string 
         const state = await readResponse<SimulationState>(response);
         if (cancelled) return;
         setMonitoringState(state);
-        const decision = state.currentDecision;
-        if (decision
-          && (decision.outcome === "ALERT" || decision.outcome === "BUY_SIMULATED")
-          && !announcedDecisionIds.current.has(decision.id)) {
-          announcedDecisionIds.current.add(decision.id);
-          setMessages((current) => [...current, {
-            id: `assistant-decision-${decision.id}`,
-            role: "assistant",
-            content: state.receipt?.concise ?? reactionTitle(decision),
-          }]);
-        }
       } catch (cause) {
         if (!cancelled) console.error("Could not refresh monitoring results.", cause);
       }
@@ -287,7 +268,7 @@ export function ShoppingChat({ initialChatId = null }: { initialChatId?: string 
         id: `assistant-${crypto.randomUUID()}`,
         role: "assistant",
         content: result.monitoring === "ACTIVE"
-          ? "Request confirmed. Monitoring is active and ready for merchant events."
+          ? "Monitoring is active. I’ll let you know when a product matches every requirement."
           : "Request confirmed and saved. Monitoring activation is still pending.",
       }]);
       router.refresh();
@@ -316,12 +297,15 @@ export function ShoppingChat({ initialChatId = null }: { initialChatId?: string 
   const selectedProfile = presentationProducts.find((profile) => (
     profile.brand === draft?.product.brand && profile.model === draft?.product.model
   ));
+  const chatMonitoringState = confirmedRequest && monitoringState?.request.id === confirmedRequest.id
+    ? monitoringState
+    : null;
   const needsColor = interpretation?.interpretation.ambiguities.some((item) => item.code === "MISSING_COLOR") ?? false;
   const selectedColor = draft?.preferences.find((preference) => /^Color:/i.test(preference))?.replace(/^Color:\s*/i, "");
 
   useEffect(() => {
     conversationEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [interpretation, messages, monitoringState?.currentDecision?.id, pending]);
+  }, [interpretation, messages, chatMonitoringState?.currentDecision?.id, pending]);
 
   useLayoutEffect(() => {
     const textarea = messageInputRef.current;
@@ -342,7 +326,6 @@ export function ShoppingChat({ initialChatId = null }: { initialChatId?: string 
         <nav aria-label="Chat actions">
           <button className="new-chat" type="button" onClick={resetChat} disabled={pending !== null}>New chat</button>
           <Link className="details-link" href="/monitoring">Monitoring</Link>
-          <Link className="details-link" href="/details">Details</Link>
         </nav>
       </header>
 
@@ -427,64 +410,86 @@ export function ShoppingChat({ initialChatId = null }: { initialChatId?: string 
                 {interpretation?.interpretation.mandateIntent.requested ? (
                   <p className="chat-safety-note">This starts monitoring only. Buying automatically always requires separate approval.</p>
                 ) : null}
-                <button
-                  className="confirm-brief"
-                  type="button"
-                  onClick={confirmRequest}
-                  disabled={!interpretation?.canConfirm || pending !== null || confirmedRequest !== null}
-                >
-                  {pending === "confirm" ? "Confirming…" : confirmedRequest ? "Monitoring active" : "Confirm and start monitoring"}
-                </button>
+                {!confirmedRequest ? (
+                  <button
+                    className="confirm-brief"
+                    type="button"
+                    onClick={confirmRequest}
+                    disabled={!interpretation?.canConfirm || pending !== null}
+                  >
+                    {pending === "confirm" ? "Confirming…" : "Confirm and start monitoring"}
+                  </button>
+                ) : null}
               </div>
             </div>
           ) : null}
           {confirmedRequest && draft?.product.brand === "Nike" && draft.product.model === "Dunk Low" ? (
             <BirthdayOpportunity requestId={confirmedRequest.id} />
           ) : null}
-          {monitoringState && (confirmedRequest || monitoringState.processedEvents.length > 0) ? (
-            <div className="chat-message assistant monitor-message">
-              <span>Monitoring update</span>
-              <div className={`monitor-update ${monitoringState.currentDecision?.outcome.toLowerCase() ?? "waiting"}`}>
-                <div className="monitor-update-heading">
-                  <div>
-                    <small>{monitoringState.currentDecision ? "Latest engine reaction" : "Monitoring active"}</small>
-                    <h2>{monitoringState.currentDecision ? reactionTitle(monitoringState.currentDecision) : eventTitle(monitoringState)}</h2>
-                  </div>
-                  {monitoringState.currentDecision ? (
-                    <span>{monitoringState.currentDecision.outcome}</span>
-                  ) : <span>WATCHING</span>}
-                </div>
-                {monitoringState.currentDecision ? (
-                  <>
-                    <p className="monitor-offer">{eventTitle(monitoringState)}</p>
-                    <dl>
-                      {monitoringState.currentDecision.landedCost ? (
-                        <div>
-                          <dt>Total delivered</dt>
-                          <dd>{formatMoney(
-                            monitoringState.currentDecision.landedCost.total.currency,
-                            monitoringState.currentDecision.landedCost.total.minorUnits,
-                          )}</dd>
-                        </div>
-                      ) : null}
-                      <div><dt>Why</dt><dd>{readableReason(monitoringState.currentDecision.primaryReason)}</dd></div>
-                    </dl>
-                    {(monitoringState.currentDecision.outcome === "ALERT" || monitoringState.currentDecision.outcome === "BUY_SIMULATED") ? (
-                      <ul className="monitor-passes">
-                        {monitoringState.currentDecision.requirements
-                          .filter((requirement) => requirement.result === "PASS")
-                          .slice(0, 4)
-                          .map((requirement) => <li key={requirement.requirement}>✓ {readableReason(requirement.requirement)}</li>)}
-                      </ul>
-                    ) : null}
-                  </>
-                ) : <p className="monitor-offer">Open details to send a preconfigured merchant event.</p>}
-                <Link className="monitor-details-link" href="/details">Open event details →</Link>
-              </div>
+          {chatMonitoringState && !chatMonitoringState.currentDecision ? (
+            <div className="chat-message assistant monitoring-waiting">
+              <span>Assistant</span>
+              <p>Monitoring is active. I’ll show you a product here when its delivered price and every requirement match your brief.</p>
             </div>
           ) : null}
-          {confirmedRequest && selectedProfile ? (
-            <MerchantOpportunity productId={selectedProfile.id} requestId={confirmedRequest.id} />
+          {chatMonitoringState?.currentDecision ? (
+            <div className="chat-message assistant monitor-message">
+              <span>Product recommendation</span>
+              <div className={`monitor-update ${chatMonitoringState.currentDecision.outcome.toLowerCase()}`}>
+                <div className="monitor-update-heading">
+                  <div>
+                    <small>{chatMonitoringState.currentDecision.outcome === "ALERT" || chatMonitoringState.currentDecision.outcome === "BUY_SIMULATED" ? "Recommended product" : "Offer checked"}</small>
+                    <h2>{reactionTitle(chatMonitoringState.currentDecision)}</h2>
+                  </div>
+                  <span>{chatMonitoringState.currentDecision.outcome === "ALERT" ? "MATCH" : chatMonitoringState.currentDecision.outcome.replaceAll("_", " ")}</span>
+                </div>
+                <p className="monitor-offer">{chatMonitoringState.currentDecision.offer.title}</p>
+                <dl>
+                  <div><dt>Seller</dt><dd>{merchantName(chatMonitoringState.currentDecision.offer.merchantId)}</dd></div>
+                  <div><dt>Variant</dt><dd>{chatMonitoringState.currentDecision.offer.attributes.size ?? "Standard"}</dd></div>
+                  <div><dt>Condition</dt><dd>{chatMonitoringState.currentDecision.offer.attributes.condition ?? "Not stated"}</dd></div>
+                  {chatMonitoringState.currentDecision.landedCost ? (
+                    <div>
+                      <dt>Total delivered</dt>
+                      <dd>{formatMoney(
+                        chatMonitoringState.currentDecision.landedCost.total.currency,
+                        chatMonitoringState.currentDecision.landedCost.total.minorUnits,
+                      )}</dd>
+                    </div>
+                  ) : null}
+                </dl>
+                {(chatMonitoringState.currentDecision.outcome === "ALERT" || chatMonitoringState.currentDecision.outcome === "BUY_SIMULATED") ? (
+                  <>
+                    <h3 className="monitor-why-title">Why this product</h3>
+                    <ul className="monitor-reasons">
+                      {recommendationReasons(chatMonitoringState.currentDecision)
+                        .slice(0, 4)
+                        .map((reason) => <li key={reason}>✓ {reason}</li>)}
+                    </ul>
+                    <div className="monitor-product-actions">
+                      <Link
+                        className="monitor-product-link secondary"
+                        href={`/products/${encodeURIComponent(chatMonitoringState.currentDecision.offer.id)}${chatId ? `?chat=${encodeURIComponent(chatId)}` : ""}`}
+                      >
+                        View details
+                      </Link>
+                      {selectedProfile ? (
+                        <a
+                          className="monitor-product-link"
+                          href={selectedProfile.productUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {selectedProfile.productLinkLabel} ↗
+                        </a>
+                      ) : null}
+                    </div>
+                  </>
+                ) : (
+                  <p className="monitor-rejection">{chatMonitoringState.currentDecision.requirements.find((requirement) => requirement.result === "FAIL")?.explanation ?? readableReason(chatMonitoringState.currentDecision.primaryReason)}</p>
+                )}
+              </div>
+            </div>
           ) : null}
           <div className="conversation-end" ref={conversationEndRef} />
         </div>

@@ -11,6 +11,8 @@ export interface PresentationProductProfile {
   identifier: { type: "MPN"; value: string };
   maximumLandedCost: { currency: "EUR"; minorUnits: number };
   brief: string;
+  productUrl: string;
+  productLinkLabel: string;
   colorOptions: readonly string[];
   image: { src: string; alt: string; attribution: string; width: number; height: number };
 }
@@ -27,6 +29,8 @@ export const presentationProducts: readonly PresentationProductProfile[] = [
     identifier: { type: "MPN", value: "DD1391-100" },
     maximumLandedCost: { currency: "EUR", minorUnits: 8_000 },
     brief: "Nike Dunk Low, EU 43, black and white, under EUR 80 delivered to Poland. New only, no resellers. Notify me once.",
+    productUrl: "https://www.nike.com/pl/t/buty-meskie-dunk-low-retro-RPBjMHNC/DD1391-100",
+    productLinkLabel: "Open at Nike",
     colorOptions: ["Black and white", "Grey and white", "All white"],
     image: {
       src: "/products/nike-dunk-low-white.png",
@@ -47,6 +51,8 @@ export const presentationProducts: readonly PresentationProductProfile[] = [
     identifier: { type: "MPN", value: "FIXTURE-IITTALA-AALTO-160-CLEAR" },
     maximumLandedCost: { currency: "EUR", minorUnits: 14_000 },
     brief: "Iittala Aalto vase, 160 mm, clear glass, under EUR 140 delivered to Poland. New only, no resellers. Notify me once.",
+    productUrl: "https://www.iittala.com/en-ie/home-decor/vases-plant-pots/vases/alvar-aalto-collection-vase-160mm-clear-1007041",
+    productLinkLabel: "Open at Iittala",
     colorOptions: ["Clear", "White", "Blue"],
     image: {
       src: "/products/iittala-aalto-vase-white.png",
@@ -67,6 +73,8 @@ export const presentationProducts: readonly PresentationProductProfile[] = [
     identifier: { type: "MPN", value: "FIXTURE-MBA-M3-13-16-512" },
     maximumLandedCost: { currency: "EUR", minorUnits: 130_000 },
     brief: "Apple MacBook Air 13-inch M3, 16 GB RAM, 512 GB SSD, silver, under EUR 1300 delivered to Poland. New only, no resellers. Notify me once.",
+    productUrl: "https://www.mediaexpert.pl/komputery-i-tablety/laptopy-i-ultrabooki/laptopy/laptop-apple-macbook-air-2024-13-6-m3-16gb-ram-512gb-ssd-macos-srebrny",
+    productLinkLabel: "Open at Media Expert",
     colorOptions: ["Silver", "Midnight", "Starlight"],
     image: {
       src: "/products/macbook-air-white.png",

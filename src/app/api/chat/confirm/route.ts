@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     const result = await shoppingChatApplication.confirm(command.data.messages);
     if (result.confirmed && result.request) {
       const assistantContent = result.monitoring === "ACTIVE"
-        ? "Request confirmed. Monitoring is active and ready for merchant events."
+        ? "Monitoring is active. I’ll let you know when a product matches every requirement."
         : "Request confirmed and saved. Monitoring activation is still pending.";
       const owned = await chatHistoryRepository.linkMonitoringRequest({
         chatId: command.data.chatId,
