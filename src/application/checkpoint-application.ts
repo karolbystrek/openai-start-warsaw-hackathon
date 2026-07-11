@@ -50,10 +50,19 @@ export class CheckpointApplication {
     await repository.saveEvent(event);
 
     if (event.type === "OFFER_OBSERVED") {
+      const previousDecisions = await repository.listDecisions(request.id);
       const match = await matching.assess(request, event.offer);
       const evidence = await verification.verify(request, event.offer, event.evidence);
       const landedCost = await pricing.calculate(request, event.offer, evidence);
-      const decision = await policy.evaluate({ request, event, offer: event.offer, evidence, match, landedCost });
+      const decision = await policy.evaluate({
+        request,
+        event,
+        offer: event.offer,
+        evidence,
+        match,
+        landedCost,
+        previousDecisions,
+      });
       await repository.saveDecision(decision);
     }
 

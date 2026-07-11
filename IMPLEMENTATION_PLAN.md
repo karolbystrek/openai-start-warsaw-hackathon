@@ -423,15 +423,16 @@ Report scheduled-recheck accuracy and **harmful-wait rate**: recommendations tha
 
 ### Phase 1 — Trusted domain core
 
-- [ ] Implement integer-minor-unit money values and explicit rounding behavior.
-- [ ] Implement versioned FX conversion with rate timestamps and freshness rules.
-- [ ] Implement coupon validation, applicability, exclusions, and stacking rules.
-- [ ] Implement the scoped delivery, tax, duty, and handling-fee calculation.
+- [x] Implement integer-minor-unit money values and explicit rounding behavior.
+- [x] Implement versioned FX conversion with rate timestamps and freshness rules.
+- [x] Implement coupon validation, applicability, exclusions, and stacking rules.
+- [x] Implement the scoped delivery, tax, duty, and handling-fee calculation.
 - [ ] Implement deterministic eligibility and lowest-landed-cost selection across `offer x delivery option x applicable coupon set`, including the no-coupon path and a default prohibition on cart padding.
-- [ ] Implement hard-requirement evaluation with `PASS`, `FAIL`, and `UNKNOWN` results.
-- [ ] Implement the decision outcomes, precedence rules, and stable reason codes.
-- [ ] Implement the structured, immutable decision record.
+- [x] Implement hard-requirement evaluation with `PASS`, `FAIL`, and `UNKNOWN` results.
+- [x] Implement the decision outcomes, precedence rules, and stable reason codes.
+- [x] Implement the structured, immutable decision record.
 - [ ] Add unit tests for exact-cap, below-cap, above-cap, rounding, invalid-coupon, and unknown-evidence boundaries.
+  - Automated tests are prohibited by repository guidance; exact-cap, above-cap, unavailable, unknown, stale, duplicate, valid-mandate, and revoked-mandate boundaries were verified through deterministic manual smoke checks.
 - [ ] **Exit verification:** Deterministic tests prove that no above-cap offer or offer with an unknown purchase-critical fact can produce `BUY_SIMULATED`.
 
 ### Phase 2 — Complete alert journey
@@ -443,7 +444,7 @@ Report scheduled-recheck accuracy and **harmful-wait rate**: recommendations tha
 - [ ] Persist provenance for every AI-derived matching claim.
 - [ ] Implement the seeded simulator, virtual clock, event playback, pause, step, and reset.
 - [ ] Implement the authoritative offer-evaluation application service.
-- [ ] Generate concise and expanded receipts from the same decision record.
+- [x] Generate concise and expanded receipts from the same decision record.
 - [ ] Build the request, offer timeline, verification, landed-cost, and decision UI.
 - [ ] Add the complete headline alert scenario and its automated scenario test.
 - [ ] **Exit verification:** Run the headline scenario to a justified `ALERT` and trace every displayed claim to stored facts and evidence.
@@ -467,10 +468,10 @@ Report scheduled-recheck accuracy and **harmful-wait rate**: recommendations tha
 - [ ] Add FX, delivery, duty, and landed-cost boundary scenarios.
 - [ ] Add conditional-delivery scenarios covering free-shipping thresholds, before/after-discount threshold bases, membership-only shipping, courier versus locker/pickup, expired quotes, and a coupon that makes the final delivered price worse.
 - [ ] Add seller-legitimacy and marketplace/reseller scenarios.
-- [ ] Implement notification fingerprints and meaningful-improvement deduplication.
+- [x] Implement notification fingerprints and meaningful-improvement deduplication.
 - [ ] Ensure runtime evaluation cannot access scenario ground-truth labels.
 - [ ] Freeze at least 25 adversarial and boundary scenarios.
-- [ ] Calculate strike precision, false-buy rate, purchase count, recall, escalation rate, duplicate-alert rate, and cost-calculation exactness.
+- [x] Calculate strike precision, false-buy rate, purchase count, recall, escalation rate, duplicate-alert rate, and cost-calculation exactness.
 - [ ] Add regression tests for every discovered false alert, false purchase, missed deal, or incorrect escalation.
 - [ ] **Exit verification:** Run the frozen evaluation set and meet the agreed metric targets, including a 0% false-buy rate with a non-zero purchase count.
 
@@ -533,15 +534,16 @@ tests/evals/
 
 Checklist:
 
-- [ ] Implement money, rounding, FX, delivery, tax, duty, fees, and coupon rules.
+- [x] Implement money, rounding, FX, delivery, tax, duty, fees, and coupon rules.
 - [ ] Own `DeliveryOption` eligibility and the deterministic global selection of the lowest valid landed-cost path across merchants, delivery methods, and applicable coupon sets; never satisfy a threshold by adding unauthorized items.
-- [ ] Implement product-requirement, seller, stock, discount, evidence-freshness, and landed-cost checks.
-- [ ] Implement deterministic decision precedence for `IGNORE`, `REJECT`, `ESCALATE`, `ALERT`, and `BUY_SIMULATED` eligibility.
-- [ ] Implement mandate scope validation and the pure pre-purchase authorization function.
-- [ ] Implement notification fingerprints and meaningful-improvement rules.
-- [ ] Implement the immutable decision record and deterministic concise/expanded receipt projections.
+- [x] Implement product-requirement, seller, stock, discount, evidence-freshness, and landed-cost checks.
+- [x] Implement deterministic decision precedence for `IGNORE`, `REJECT`, `ESCALATE`, `ALERT`, and `BUY_SIMULATED` eligibility.
+- [x] Implement mandate scope validation and the pure pre-purchase authorization function.
+- [x] Implement notification fingerprints and meaningful-improvement rules.
+- [x] Implement the immutable decision record and deterministic concise/expanded receipt projections.
 - [ ] Build boundary-heavy unit tests and the evaluation metric calculator.
-- [ ] Publish pure test fixtures and service functions that Persons B and C can consume.
+  - The evaluation metric calculator is implemented. Automated unit tests remain intentionally excluded by repository guidance; deterministic manual boundary checks pass.
+- [x] Publish pure test fixtures and service functions that Persons B and C can consume.
 - [ ] **Track verification:** Domain tests prove that above-cap, hard-mismatch, unavailable, stale-critical, and `UNKNOWN` purchase-critical offers never become purchase-eligible.
 
 Person A can begin immediately after the shared contract checkpoint using handcrafted offer and evidence fixtures. Person A is the primary owner of delivery-option optimization because it is authoritative pricing and policy logic. Person B supplies structured merchant delivery quotes, eligibility evidence, and adversarial fixtures through the shared contracts; Person C only orchestrates the service and renders its persisted winning path and rejected alternatives.
@@ -627,7 +629,7 @@ Do not wait until all three tracks are finished. Merge or rebase frequently, but
 #### Checkpoint 2 — Real alert slice
 
 - [ ] Integrate real brief interpretation and matching from Person B.
-- [ ] Integrate real landed cost and alert policy from Person A.
+- [x] Integrate real landed cost and alert policy from Person A.
 - [ ] Persist and display the real decision receipt through Person C.
 - [ ] **Checkpoint verification:** The headline scenario rejects its first deceptive offers and produces one valid `ALERT` with exact arithmetic and evidence.
 

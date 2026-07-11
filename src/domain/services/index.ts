@@ -2,6 +2,7 @@ import type {
   DecisionRecord,
   EvidenceBundle,
   LandedCost,
+  Mandate,
   MatchAssessment,
   OfferSnapshot,
   ShoppingRequest,
@@ -38,6 +39,8 @@ export interface PolicyEvaluator {
     evidence: EvidenceBundle;
     match: MatchAssessment;
     landedCost: LandedCost;
+    mandate?: Mandate | null;
+    previousDecisions?: readonly DecisionRecord[];
   }): Promise<DecisionRecord>;
 }
 
