@@ -21,6 +21,7 @@ These choices freeze the first contract version and the deterministic demo fixtu
 
 - Monetary values use integer minor units. FX and percentage inputs use decimal strings.
 - Tax and duty rules are fixture-specific and versioned. They are not a general description of Polish or EU law.
+- Coupon and reference-discount validity are not hard requirements by default. Invalid savings are excluded, the no-coupon landed cost is recalculated, and only the final delivered price and explicit hard requirements determine eligibility.
 - The rejected headline offer resolves to EUR 81.60 landed after fixture-defined conversion, delivery, and duty.
 - The accepted headline offer is EUR 69.00 plus EUR 7.40 delivery, or EUR 76.40 landed.
 

@@ -1,16 +1,6 @@
-import { DecisionRecordSchema, type DecisionRecord, type EvidenceBundle, type LandedCost, type MatchAssessment, type OfferSnapshot, type ShoppingRequest } from "@/domain/contracts";
-import type { LandedCostCalculator, MatchService, PolicyEvaluator, ReceiptProjection, VerificationService } from "@/domain/services";
+import { DecisionRecordSchema, type DecisionRecord, type EvidenceBundle, type LandedCost, type OfferSnapshot, type ShoppingRequest } from "@/domain/contracts";
+import type { LandedCostCalculator, PolicyEvaluator, ReceiptProjection, VerificationService } from "@/domain/services";
 import { costsByOfferId, decisionsByOfferId } from "@/adapters/fixtures/trust-core-fixtures";
-import { StagedMatchService } from "@/domain/matching/staged-matcher";
-import { CachedAmbiguousMatchAssessor } from "@/ai/cached-ambiguous-match";
-
-export class FixtureMatchService implements MatchService {
-  private readonly matcher = new StagedMatchService(undefined, new CachedAmbiguousMatchAssessor());
-
-  async assess(request: ShoppingRequest, offer: OfferSnapshot): Promise<MatchAssessment> {
-    return this.matcher.assess(request, offer);
-  }
-}
 
 export class FixtureVerificationService implements VerificationService {
   async verify(_request: ShoppingRequest, _offer: OfferSnapshot, evidence: EvidenceBundle): Promise<EvidenceBundle> {

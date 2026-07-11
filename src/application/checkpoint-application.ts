@@ -1,8 +1,10 @@
 import { SimulationStateSchema, type SimulationState } from "@/application/simulation-state";
 import { recoverSimulator } from "@/application/simulator-recovery";
 import type { EvaluationRepository } from "@/application/evaluation-repository";
-import type { ShoppingRequest } from "@/domain/contracts";
+import { ShoppingRequestSchema, type ShoppingBriefInterpretation, type ShoppingRequest } from "@/domain/contracts";
 import type {
+  BriefInterpreter,
+  ConfirmedBriefProjector,
   LandedCostCalculator,
   MatchService,
   PolicyEvaluator,
@@ -21,12 +23,17 @@ export interface CheckpointApplicationDependencies {
   pricing: LandedCostCalculator;
   policy: PolicyEvaluator;
   receipts: ReceiptProjection;
+  briefInterpreter: BriefInterpreter;
+  briefProjector: ConfirmedBriefProjector;
 }
 
 export class CheckpointApplication {
   private mutationTail: Promise<void> = Promise.resolve();
+  private activeRequest: ShoppingRequest;
 
-  constructor(private readonly dependencies: CheckpointApplicationDependencies) {}
+  constructor(private readonly dependencies: CheckpointApplicationDependencies) {
+    this.activeRequest = dependencies.initialRequest;
+  }
 
   private async serializeMutation<T>(operation: () => Promise<T>): Promise<T> {
     const previous = this.mutationTail;
@@ -64,6 +71,26 @@ export class CheckpointApplication {
         concise: receipts.concise(currentDecision),
         expanded: [...receipts.expanded(currentDecision)],
       } : null,
+    });
+  }
+
+  async interpretBrief(sourceText: string): Promise<ShoppingBriefInterpretation> {
+    return this.dependencies.briefInterpreter.interpret(sourceText);
+  }
+
+  async activateBrief(sourceText: string): Promise<{
+    interpretation: ShoppingBriefInterpretation;
+    state: SimulationState | null;
+  }> {
+    return this.serializeMutation(async () => {
+      const interpretation = await this.dependencies.briefInterpreter.interpret(sourceText);
+      const projected = this.dependencies.briefProjector.project(interpretation);
+      if (!projected) return { interpretation, state: null };
+
+      this.activeRequest = ShoppingRequestSchema.parse({ ...projected, lifecycle: "ACTIVE" });
+      this.dependencies.simulator.reset();
+      await this.dependencies.repository.resetToRequest(this.activeRequest);
+      return { interpretation, state: await this.getSimulationState() };
     });
   }
 
@@ -130,19 +157,25 @@ export class CheckpointApplication {
   }
 
   private async resetSimulationOnce(): Promise<SimulationState> {
-    const { initialRequest, simulator, repository } = this.dependencies;
+    const { simulator, repository } = this.dependencies;
+    const request = await this.loadCurrentRequest();
     simulator.reset();
-    await repository.resetToRequest(initialRequest);
+    await repository.resetToRequest(request);
     return this.getSimulationState();
   }
 
   private async loadCurrentRequest(effectiveAt?: string): Promise<ShoppingRequest> {
     const { initialRequest, repository } = this.dependencies;
-    const current = await repository.getCurrentRequest(initialRequest.id, effectiveAt);
-    if (current) return current;
-    await repository.saveRequest(initialRequest);
-    const seeded = await repository.getCurrentRequest(initialRequest.id, effectiveAt);
-    if (!seeded) throw new Error(`Could not load request ${initialRequest.id}.`);
+    const fallback = this.activeRequest ?? initialRequest;
+    const current = await repository.getCurrentRequest(fallback.id, effectiveAt);
+    if (current) {
+      this.activeRequest = current;
+      return current;
+    }
+    await repository.saveRequest(fallback);
+    const seeded = await repository.getCurrentRequest(fallback.id, effectiveAt);
+    if (!seeded) throw new Error(`Could not load request ${fallback.id}.`);
+    this.activeRequest = seeded;
     return seeded;
   }
 }

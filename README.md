@@ -1,6 +1,6 @@
 # AI Shopping Assistant
 
-Checkpoint 1 base for the OpenAI × START Warsaw Hackathon Solidgate case. The app validates deterministic merchant events, sends them through frozen service interfaces, stores the resulting audit records in SQLite, and renders the first rejection-to-alert demo slice.
+Integrated alert slice for the OpenAI × START Warsaw Hackathon Solidgate case. The app interprets and confirms a natural-language brief, matches deterministic merchant events through the real staged catalog matcher, applies the trust-core services, stores audit records in SQLite, and renders the rejection-to-alert journey.
 
 The Next.js foundation was generated with `npx create-next-app@latest` defaults and pnpm, then organized under `src/` to preserve the ownership boundaries in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
 
@@ -14,7 +14,7 @@ pnpm db:reset
 pnpm dev
 ```
 
-Open <http://localhost:3000>, reset the scenario, and step through five fixture events. The timeline rejects a wrong model, a GBP offer at EUR 81.60 landed, and an invalid coupon before producing an alert for the EUR 76.40 offer and then emitting a low-stock update.
+Open <http://localhost:3000>, interpret and confirm a brief (the complete example is ready to use), then step through five deterministic simulator events. The timeline rejects a wrong model, an above-cap GBP offer, and an invalid-coupon offer before producing an alert for the EUR 76.40 offer and then emitting a low-stock update.
 
 No environment file or OpenAI API key is needed. Deterministic adapters and a repository-local SQLite path are the defaults. To use the optional OpenAI adapter later, copy `.env.example` to `.env.local` and configure `OPENAI_API_KEY` and `OPENAI_MODEL`.
 
@@ -40,7 +40,7 @@ Dependencies point inward. `src/domain` contains Zod contracts and service inter
 - Person B / `feat/intelligence-simulator`: brief interpretation, catalog, matching, AI adapters, simulator, and scenarios.
 - Person C / `feat/product-integration`: application orchestration, SQLite/Drizzle, UI, and end-to-end integration.
 
-Checkpoint adapters are visibly marked `STUB` in decision provenance. They are contract-safe placeholders, not completed business judgment. Replace them at convergence checkpoints without changing UI-facing contracts.
+The running app uses the real Person A trust-core services and Person B brief/matching services. Fixture adapters remain only as isolated checkpoint helpers. The merchant feed itself stays deterministic and simulated by design so the demo is repeatable.
 
 Per the repository guidance, this project does not contain automated tests. Validate work with `pnpm verify`, database reset/seed commands, and a manual reset-and-step smoke check in the browser.
 
