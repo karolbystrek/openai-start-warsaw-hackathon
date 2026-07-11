@@ -38,7 +38,6 @@ export class DeterministicBriefInterpreter implements BriefInterpreter {
     const isNikeDunkLow = /\bnike\b/.test(lower) && /\bdunk\s*low\b/.test(lower);
     const sizeMatch = text.match(/\b(?:size|eu)\s*(\d{2}(?:[.,]5)?)\b/i);
     const maximumLandedCost = moneyFromText(text);
-    const deliveredExplicit = /\b(delivered|landed|including\s+(?:shipping|delivery))\b/i.test(text);
     const destinationCountry = /\b(poland|polska|\bpl\b)\b/i.test(text) ? "PL" : null;
     const condition = /\bnew\s+only\b/i.test(text)
       ? "NEW" as const
@@ -64,7 +63,6 @@ export class DeterministicBriefInterpreter implements BriefInterpreter {
     if (!sizeMatch?.[1]) ambiguities.push(ambiguity("MISSING_SIZE", "requestDraft.requirements.size", "A required shoe size was not provided.", "Which EU shoe size do you need?"));
     if (!destinationCountry) ambiguities.push(ambiguity("MISSING_DESTINATION", "requestDraft.requirements.destinationCountry", "Delivered cost depends on the delivery destination.", "Which country should the offer be delivered to?"));
     if (!maximumLandedCost) ambiguities.push(ambiguity("MISSING_BUDGET", "requestDraft.requirements.maximumLandedCost", "No unambiguous monetary ceiling and currency were found.", "What is the maximum delivered price and currency?"));
-    if (maximumLandedCost && !deliveredExplicit) ambiguities.push(ambiguity("UNCLEAR_DELIVERED_CAP", "requestDraft.requirements.capIncludesDelivery", "It is unclear whether the cap includes delivery and import costs.", "Does your maximum price include delivery, duties, and fees?"));
     if (!condition) ambiguities.push(ambiguity("MISSING_CONDITION", "requestDraft.requirements.condition", "The acceptable product condition was not stated.", "Should the item be new, used, or refurbished?"));
     if (mandateSuggested && !mandateRequested) {
       ambiguities.push(ambiguity("AMBIGUOUS_PURCHASE_CONSENT", "mandateIntent", "The text suggests automation without explicit purchase consent.", "Do you explicitly authorize an automatic simulated purchase under these conditions?"));
@@ -87,7 +85,7 @@ export class DeterministicBriefInterpreter implements BriefInterpreter {
           destinationCountry,
           allowResellers,
           maximumLandedCost,
-          capIncludesDelivery: maximumLandedCost ? deliveredExplicit : null,
+          capIncludesDelivery: maximumLandedCost ? true : null,
         },
         preferences: [],
         notificationPolicy: { mode: "ONCE", improvementThresholdMinor: 0 },

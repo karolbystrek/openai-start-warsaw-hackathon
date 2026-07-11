@@ -7,6 +7,7 @@ These choices freeze the first contract version and the deterministic demo fixtu
 - Product: Nike Dunk Low, EU size 43, quantity one.
 - Destination: Poland, represented by country code `PL`.
 - Budget: EUR 80.00 delivered. A landed cost equal to the cap passes.
+- Any monetary ceiling in a shopping brief is interpreted as the maximum total landed cost, including delivery, taxes, duties, fees, and currency conversion. The assistant must not ask whether those costs are included.
 - Hard conditions: new condition and a merchant-owned, non-reseller sales channel.
 - Automatic purchase requires exact identifier or disclosed seeded-catalog identity. AI-assisted identity may not authorize a purchase.
 

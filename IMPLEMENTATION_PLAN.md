@@ -128,7 +128,7 @@ Store the original text and a versioned, user-confirmable interpretation:
 - lifecycle: `DRAFT`, `ACTIVE`, `PAUSED`, `REVOKED`, `FULFILLED`;
 - version and effective timestamps.
 
-No monitoring or purchase is allowed while a required fact is ambiguous, such as destination or whether the cap includes delivery.
+No monitoring or purchase is allowed while a required fact is ambiguous, such as destination. A user-provided monetary ceiling is always the maximum total landed cost, including delivery, taxes, duties, fees, and currency conversion, and does not require separate clarification.
 
 ### Standing mandate
 

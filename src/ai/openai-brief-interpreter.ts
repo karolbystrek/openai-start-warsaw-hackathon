@@ -1,11 +1,29 @@
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
+import { z } from "zod";
 
 import { ShoppingBriefInterpretationSchema, type ShoppingBriefInterpretation } from "@/domain/contracts";
 import type { BriefInterpreter } from "@/domain/services";
 import { BRIEF_OUTPUT_SCHEMA_VERSION, BRIEF_PROMPT_VERSION } from "@/domain/brief/interpret";
 
 const ModelBriefOutputSchema = ShoppingBriefInterpretationSchema.omit({ provenance: true });
+
+function enforceMaximumLandedCost(output: z.infer<typeof ModelBriefOutputSchema>) {
+  const maximumLandedCost = output.requestDraft.requirements.maximumLandedCost;
+  if (!maximumLandedCost) return output;
+
+  return {
+    ...output,
+    requestDraft: {
+      ...output.requestDraft,
+      requirements: {
+        ...output.requestDraft.requirements,
+        capIncludesDelivery: true as const,
+      },
+    },
+    ambiguities: output.ambiguities.filter((item) => item.code !== "UNCLEAR_DELIVERED_CAP"),
+  };
+}
 
 export class OpenAIBriefInterpreter implements BriefInterpreter {
   private readonly client: OpenAI;
@@ -25,7 +43,7 @@ export class OpenAIBriefInterpreter implements BriefInterpreter {
       input: [
         {
           role: "system",
-          content: "Convert the shopping brief into the supplied draft schema. Preserve hard requirements, preferences, notification intent, and mandate intent separately. List every unresolved activation-critical ambiguity. Never infer a destination, invent evidence, activate consent, or relax a cap.",
+          content: "Convert the shopping brief into the supplied draft schema. Preserve hard requirements, preferences, notification intent, and mandate intent separately. Any monetary ceiling supplied by the user is always the maximum total landed cost, including item price, delivery, taxes, duties, fees, currency conversion, and valid discounts; set capIncludesDelivery to true and never ask whether the cap includes those costs. List every other unresolved activation-critical ambiguity. Never infer a destination, invent evidence, activate consent, or relax a cap.",
         },
         { role: "user", content: sourceText },
       ],
@@ -34,7 +52,7 @@ export class OpenAIBriefInterpreter implements BriefInterpreter {
 
     if (!response.output_parsed) throw new Error("OpenAI returned no parsed shopping request.");
     return ShoppingBriefInterpretationSchema.parse({
-      ...response.output_parsed,
+      ...enforceMaximumLandedCost(response.output_parsed),
       originalText: sourceText,
       provenance: {
         kind: "AI_DERIVED",
