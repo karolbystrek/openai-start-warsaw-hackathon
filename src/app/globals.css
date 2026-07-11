@@ -292,13 +292,6 @@ dt { color: var(--muted); } dd { margin: 0; font-weight: 700; text-align: right;
 .assistant-orb { width: 52px; height: 52px; margin-bottom: 20px; }
 .chat-welcome h1 { margin: 0; color: #102142; font-size: clamp(2rem, 5vw, 3.4rem); line-height: 1.05; letter-spacing: -.055em; }
 .chat-welcome p { max-width: 520px; margin: 14px auto 0; color: #637895; line-height: 1.55; }
-.chat-demo-prompts { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 20px; }
-.demo-prompt { margin-top: 20px; padding: 9px 14px; border: 1px solid rgba(255, 255, 255, .85); border-radius: 999px; background: rgba(255, 255, 255, .42); color: var(--blue); cursor: pointer; font-size: .82rem; font-weight: 800; box-shadow: inset 0 1px 0 white, 0 8px 24px rgba(42, 101, 173, .08); backdrop-filter: blur(16px) saturate(145%); }
-.chat-demo-prompts .demo-prompt { margin-top: 0; }
-.demo-product-prompt { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 5px; }
-.demo-product-image { position: relative; display: block; width: 32px; height: 32px; overflow: hidden; border-radius: 50%; background: white; }
-.demo-product-image img { object-fit: cover; }
-.demo-prompt:hover { background: rgba(255, 255, 255, .7); }
 .chat-page .chat-messages { height: auto; overflow: visible; padding: 0; display: flex; flex-direction: column; gap: 20px; }
 .chat-page .chat-message { max-width: 82%; }
 .chat-page .chat-message.user { align-self: flex-end; }

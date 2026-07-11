@@ -27,17 +27,39 @@ For the curated demo, choose one of the three presentation briefs, confirm the i
 
 No environment file or OpenAI API key is needed for the deterministic text flow. Deterministic adapters and a repository-local SQLite path are the defaults. To enable the optional voice controls, copy `.env.example` to `.env.local` and configure `OPENAI_API_KEY`.
 
-## Presentation scope
+## Demo scenarios
 
-The live demo intentionally supports exactly three curated products. A fourth product remains blocked at confirmation instead of falling into an unverified generic flow.
+[przypadki.txt](przypadki.txt) is the manual demo runbook. It contains three copy-ready shopping briefs and the recommended presentation order. Merchant names, prices, promotions, and virtual time are deterministic demo data; a future promotion never authorizes an automatic purchase.
 
-| Example | Hard variant | Delivered cap | Deterministic story |
-| --- | --- | ---: | --- |
-| Nike Dunk Low | EU 43 | EUR 80 | Wrong model, over-cap offer, and invalid coupon are rejected before a EUR 76.40 alert. |
-| Iittala Aalto Vase | 160 mm, clear glass | EUR 140 | A cheap 120 mm opal listing is rejected before a EUR 128.00 alert. |
-| MacBook Air M3 | 13-inch, 16 GB RAM, 512 GB SSD | EUR 1,300 | A cheap M2 8/256 listing is rejected before a EUR 1,238.00 alert. |
+### 1. Nike Dunk Low — clarification and scheduled promotion
 
-For a reliable presentation, use the three **Try** buttons in the chat. Confirmation resets previous evidence, activates the matching scenario, and updates the event counter to that scenario's actual length. The scenario remains deterministic and can be repeated with **Reset**.
+> Nike Dunk Low, EU 43, under EUR 80 delivered to Poland. New only, no resellers. Notify me once.
+
+The missing color deliberately triggers a clarification. Choose **Black and white**, confirm monitoring, and compare Zalando at **EUR 76.40 now** with Nike.com at **EUR 61.12 in 10 days**. Select **Wait 10 days**, then **Advance +10 days** to recheck price, EU 43 size, color, stock, and coupon before any action.
+
+| Color clarification | Promotion recheck |
+| --- | --- |
+| ![Nike brief asking the user to choose black and white, grey and white, or all white](public/demo/nike-color-selection.png) | ![Nike promotion rechecked after ten virtual days against price, size, color, stock, and coupon](public/demo/nike-promotion-recheck.png) |
+
+To skip clarification, include `black and white` in the initial brief.
+
+### 2. MacBook Air M3 — landed-price conversion
+
+> Apple MacBook Air 13-inch M3, 16 GB RAM, 512 GB SSD, silver, under EUR 1300 delivered to Poland. New only, no resellers. Notify me once.
+
+Confirm the complete brief to show the verified Media Expert offer. The card preserves the hard configuration and presents **5,299 PLN** as **EUR 1,238.00 delivered**, making the landed-price comparison explicit.
+
+![Verified Media Expert offer for the requested MacBook Air M3 configuration](public/demo/macbook-media-expert.png)
+
+### 3. Iittala Aalto Vase — official-store match
+
+> Iittala Aalto vase, 160 mm, clear glass, under EUR 140 delivered to Poland. New only, no resellers. Notify me once.
+
+Confirm the brief to show the official `iittala.com` offer at **EUR 128.00 delivered**, with the required **160 mm clear-glass** variant visible on the evidence card.
+
+![Verified official Iittala offer for the 160 mm clear-glass Aalto vase](public/demo/iittala-official-store.png)
+
+For the clearest live presentation: run Nike first, show the clarification and virtual-time recheck, click **New chat**, then run MacBook. Use Iittala as the short final example.
 
 ## OpenAI voice
 

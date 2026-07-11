@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 
 import { formatMoney } from "@/app/format-money";
 import { merchantName, recommendationReasons } from "@/app/product-presentation";
@@ -345,18 +344,6 @@ export function ShoppingChat({ initialChatId = null }: { initialChatId?: string 
           <span className="assistant-orb" aria-hidden="true">S</span>
           <h1 id="chat-title">What are you looking for?</h1>
           <p>Tell me the item, your budget, and any deal-breakers. I’ll watch the full delivered price.</p>
-          {messages.length === 1 ? (
-            <div className="chat-demo-prompts" aria-label="Focused demo products">
-              {presentationProducts.map((profile) => (
-                <button className="demo-prompt demo-product-prompt" type="button" key={profile.id} onClick={() => setInput(profile.brief)}>
-                  <span className="demo-product-image" aria-hidden="true">
-                    <Image src={profile.image.src} alt="" fill sizes="32px" />
-                  </span>
-                  {profile.label}
-                </button>
-              ))}
-            </div>
-          ) : null}
         </div>
 
         <VoiceShoppingCompanion
