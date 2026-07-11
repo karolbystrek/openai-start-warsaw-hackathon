@@ -335,7 +335,6 @@ export function ShoppingChat({ initialChatId = null }: { initialChatId?: string 
         </Link>
         <nav aria-label="Chat actions">
           <button className="new-chat" type="button" onClick={resetChat} disabled={pending !== null}>New chat</button>
-          <Link className="details-link" href="/monitoring">Monitoring</Link>
         </nav>
       </header>
 
