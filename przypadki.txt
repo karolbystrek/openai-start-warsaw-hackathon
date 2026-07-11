@@ -1,0 +1,57 @@
+PRZYPADKI DEMONSTRACYJNE — AI SHOPPING ASSISTANT
+
+1. NIKE — WYBÓR KOLORU, ZALANDO I PROMOCJA NIKE.COM
+
+Brief bez koloru:
+Nike Dunk Low, EU 43, under EUR 80 delivered to Poland. New only, no resellers. Notify me once.
+
+Przebieg:
+1. Chat zapyta o kolor.
+2. Wybierz "Black and white".
+3. Kliknij "Confirm and start monitoring".
+4. Pojawi się aktualna oferta Zalando za €76.40 oraz promocja Nike.com za 10 dni za €61.12.
+5. Wybierz jedną z opcji:
+   - Buy now at Zalando
+   - Wait 10 days
+   - Monitor both stores
+6. Dla pełnego scenariusza wybierz "Wait 10 days".
+7. Kliknij "Advance +10 days".
+8. Pojawi się ponowna kontrola ceny, rozmiaru, koloru, dostępności i kuponu Nike.com.
+
+Pełny brief, który pomija pytanie o kolor:
+Nike Dunk Low, EU 43, black and white, under EUR 80 delivered to Poland. New only, no resellers. Notify me once.
+
+
+2. MACBOOK AIR — MEDIA EXPERT
+
+Brief:
+Apple MacBook Air 13-inch M3, 16 GB RAM, 512 GB SSD, silver, under EUR 1300 delivered to Poland. New only, no resellers. Notify me once.
+
+Przebieg:
+1. Kliknij "Confirm and start monitoring".
+2. Pojawi się Media Expert, domena mediaexpert.pl i cena 5,299 PLN / €1,238.00 delivered.
+3. Karta pokaże konfigurację M3, 16 GB RAM, 512 GB SSD i kolor Silver.
+
+
+3. IITTALA AALTO VASE — OFICJALNY SKLEP
+
+Brief:
+Iittala Aalto vase, 160 mm, clear glass, under EUR 140 delivered to Poland. New only, no resellers. Notify me once.
+
+Przebieg:
+1. Kliknij "Confirm and start monitoring".
+2. Pojawi się oficjalny sklep Iittala, domena iittala.com i cena €128.00 delivered.
+
+
+REKOMENDOWANA KOLEJNOŚĆ PREZENTACJI
+
+1. Uruchom Nike bez podawania koloru.
+2. Pokaż pytanie doprecyzowujące i wybierz kolor przyciskiem.
+3. Potwierdź monitoring.
+4. Porównaj Zalando z promocją Nike.com.
+5. Wybierz oczekiwanie, przesuń wirtualny czas o 10 dni i pokaż recheck.
+6. Kliknij "New chat".
+7. Uruchom MacBooka i pokaż Media Expert oraz przeliczenie PLN na EUR.
+8. Opcjonalnie zakończ krótkim scenariuszem Iittala.
+
+Uwaga: sklepy, ceny, promocje i upływ czasu są deterministycznymi danymi demonstracyjnymi. Przyszła promocja nie autoryzuje automatycznego zakupu.

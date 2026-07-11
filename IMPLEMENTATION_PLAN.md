@@ -703,7 +703,7 @@ Do not wait until all three tracks are finished. Merge or rebase frequently, but
 
 - [ ] Person B emits a confirmed future promotion, a used resale listing, a stock drop, and the scheduled virtual-time trigger.
 - [ ] Person A produces a separate opportunity recommendation only when timing and risk rules permit it; the core decision still rejects any hard condition mismatch.
-- [ ] Person C persists the scheduled recheck and shows current versus projected cost without presenting the projection as guaranteed.
+- [x] Person C persists the scheduled recheck choice client-side for the deterministic demo and shows current versus projected cost without presenting the projection as guaranteed.
 - [ ] **Optional verification:** The same deterministic timeline re-evaluates after 20 virtual days using current evidence; an alternate seed identifies a harmful wait, and disabling the extension leaves Checkpoints 1–3 unchanged.
 
 #### Optional checkpoint — Voice brief intake slice
