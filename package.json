@@ -20,6 +20,7 @@
     "verify": "pnpm lint && pnpm typecheck && pnpm build"
   },
   "dependencies": {
+    "@openai/agents": "^0.13.1",
     "better-sqlite3": "^12.11.1",
     "decimal.js": "^10.6.0",
     "drizzle-orm": "^0.45.2",

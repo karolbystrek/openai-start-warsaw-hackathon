@@ -593,4 +593,9 @@ export class DrizzleCheckpointRepository implements EvaluationRepository {
       return true;
     }, { behavior: "immediate" });
   }
+
+  async getOrderByDecision(decisionId: string): Promise<SimulatedOrder | null> {
+    const row = this.db.select().from(simulatedOrders).where(eq(simulatedOrders.decisionId, decisionId)).get();
+    return row ? SimulatedOrderSchema.parse(JSON.parse(row.payload)) : null;
+  }
 }

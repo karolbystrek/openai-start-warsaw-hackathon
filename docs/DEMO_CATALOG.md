@@ -26,6 +26,16 @@ The mock catalog also contains paired products in six additional shopping branch
 - Sports tech: Garmin Forerunner 265 and 265S running watches.
 - Toys: LEGO Technic Mercedes-AMG F1 W14 and McLaren Formula 1 construction sets.
 
+## Focused demo journeys
+
+The primary demo selector intentionally highlights three request-to-payment journeys:
+
+- Nike Dunk Low Retro White/Black (`DD1391-100`, EU 43) versus the existing Dunk near matches.
+- Iittala Aalto Vase 160 mm clear versus the fixture-only 120 mm opal variant.
+- Apple MacBook Air 13-inch M3 with 16 GB RAM and 512 GB SSD versus the fixture-only M2 with 8 GB RAM and 256 GB SSD.
+
+The Iittala and MacBook identifiers use the `FIXTURE-*` prefix. They exist to exercise deterministic identity and variant rejection and are not official manufacturer identifiers.
+
 All identifiers for these additional products use the `FIXTURE-*` prefix and are intentionally mock values. The names and aliases exist to exercise catalog matching; they are not claims about current availability, pricing, or official merchant data.
 
 Every alias resolution is marked with `SEEDED` provenance. Normalized matches are computed from brand/model tokens, and AI-assisted claims are marked separately with prompt, output-schema, model/cache, response, and input provenance.

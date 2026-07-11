@@ -12,6 +12,7 @@ import {
   type OfferSnapshot,
   type ShoppingBriefInterpretation,
   type ShoppingRequest,
+  type SimulatedOrder,
   type SimulationEvent,
 } from "@/domain/contracts";
 import type {
@@ -303,6 +304,50 @@ export class CheckpointApplication {
 
   async resetSimulation(): Promise<SimulationState> {
     return this.serializeMutation(() => this.resetSimulationOnce());
+  }
+
+  async placeSimulatedPayment(decisionId: string): Promise<{ order: SimulatedOrder; alreadyPlaced: boolean }> {
+    return this.serializeMutation(async () => {
+      const existing = await this.dependencies.repository.getOrderByDecision(decisionId);
+      if (existing) return { order: existing, alreadyPlaced: true };
+
+      const state = await this.getSimulationState();
+      const decision = state.currentDecision;
+      if (!decision || decision.id !== decisionId) throw new Error("The selected decision is no longer current.");
+      const latestEvent = state.processedEvents.at(-1);
+      if (!latestEvent || latestEvent.id !== decision.eventId) {
+        throw new Error("New merchant evidence arrived after this decision. Re-evaluate before payment.");
+      }
+      if (!decision.landedCost || !["ALERT", "BUY_SIMULATED"].includes(decision.outcome)) {
+        throw new Error("A valid deal alert is required before simulated payment.");
+      }
+      if (decision.notificationSuppressed || decision.match.overall !== "PASS") {
+        throw new Error("Product identity and notification eligibility must pass before simulated payment.");
+      }
+      if (!["EXACT_IDENTIFIER", "SEEDED_CATALOG"].includes(decision.match.method)) {
+        throw new Error("Simulated payment requires exact or disclosed seeded product identity.");
+      }
+      if (decision.requirements.some((requirement) => requirement.result !== "PASS")) {
+        throw new Error("Every verification and landed-cost requirement must pass before simulated payment.");
+      }
+
+      const order = SimulatedOrderSchema.parse({
+        schemaVersion: 1,
+        id: `order-${decision.id}`,
+        idempotencyKey: `one-time-checkout-${decision.id}`,
+        requestId: decision.requestId,
+        requestVersion: decision.requestVersion,
+        mandateId: `explicit-ui-consent-${decision.id}`,
+        decisionId: decision.id,
+        offerId: decision.offer.id,
+        quantity: 1,
+        paid: decision.landedCost.total,
+        status: "PLACED",
+        createdAt: new Date().toISOString(),
+      });
+      await this.dependencies.repository.saveOrder(order);
+      return { order, alreadyPlaced: false };
+    });
   }
 
   private async resetSimulationOnce(): Promise<SimulationState> {

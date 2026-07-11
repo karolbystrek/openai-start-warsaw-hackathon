@@ -280,6 +280,10 @@ export class InMemoryCheckpointRepository implements EvaluationRepository {
     return true;
   }
 
+  async getOrderByDecision(decisionId: string): Promise<SimulatedOrder | null> {
+    return [...this.orders.values()].find((order) => order.decisionId === decisionId) ?? null;
+  }
+
   private nextSequence(runId: string): number {
     const sequences = this.events
       .filter((event) => event.runId === runId)

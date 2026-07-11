@@ -95,4 +95,5 @@ export interface CheckpointRepository {
   getCurrentMandate(requestId: string, requestVersion: number, effectiveAt?: string): Promise<Mandate | null>;
   saveOrder(order: SimulatedOrder): Promise<void>;
   listOrders(requestId: string): Promise<readonly SimulatedOrder[]>;
+  getOrderByDecision(decisionId: string): Promise<SimulatedOrder | null>;
 }

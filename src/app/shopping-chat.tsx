@@ -1,10 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 
 import { formatMoney } from "@/app/format-money";
+import {
+  VoiceShoppingCompanion,
+  type VoiceBriefReview,
+} from "@/app/voice-shopping-companion";
+import { presentationProducts } from "@/domain/catalog/presentation-products";
 import type {
   ShoppingBriefInterpretation,
   ShoppingRequest,
@@ -28,8 +34,6 @@ type ConfirmationResponse = InterpretationResponse & {
   monitoring: "ACTIVE" | "DEFERRED";
 };
 
-const DEMO_BRIEF = "Nike Dunk Low, size 43, under EUR 80 delivered to Poland. New only, no resellers. Notify me once.";
-
 const initialMessages: ChatMessage[] = [{
   id: "welcome",
   role: "assistant",
@@ -37,11 +41,16 @@ const initialMessages: ChatMessage[] = [{
 }];
 
 function assistantSummary(result: InterpretationResponse): string {
-  if (result.interpretation.ambiguities.length > 0) {
-    const count = result.interpretation.ambiguities.length;
-    return `I have a partial brief, but ${count} ${count === 1 ? "detail is" : "details are"} still required before monitoring can start.`;
+  const questions = result.interpretation.ambiguities
+    .filter((item) => item.blocking)
+    .map((item) => item.clarificationQuestion);
+  if (questions.length > 0) {
+    const { brand, model } = result.interpretation.requestDraft.product;
+    const product = [brand, model].filter(Boolean).join(" ");
+    const remaining = questions.length - 1;
+    return `${product ? `I’m tracking ${product}. ` : "Let’s make the search precise. "}${questions[0]}${remaining > 0 ? ` We’ll cover ${remaining} more ${remaining === 1 ? "detail" : "details"} after that.` : ""}`;
   }
-  return "I’ve got it. Check the details below, then confirm and I’ll start watching for the right deal.";
+  return "The brief is complete. Review the hard constraints below and confirm them before monitoring is activated.";
 }
 
 async function readResponse<T>(response: Response): Promise<T> {
@@ -61,10 +70,17 @@ export function ShoppingChat() {
   const [pending, setPending] = useState<"interpret" | "confirm" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const summonVoice = () => window.dispatchEvent(new Event("shopping-voice-summon"));
+
   const sendMessage = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const content = input.trim();
     if (!content || pending) return;
+    if (/^\/(?:voice|scout)$/i.test(content)) {
+      setInput("");
+      summonVoice();
+      return;
+    }
 
     const nextTurns = [...userTurns, content];
     setUserTurns(nextTurns);
@@ -97,6 +113,43 @@ export function ShoppingChat() {
       setPending(null);
     }
   };
+
+  const reviewVoiceBrief = useCallback(async (brief: string): Promise<VoiceBriefReview> => {
+    const content = brief.trim();
+    setError(null);
+    setConfirmedRequest(null);
+    setUserTurns([content]);
+    setPending("interpret");
+    setMessages((current) => [
+      ...current.filter((message) => message.id !== "voice-brief" && message.id !== "voice-review"),
+      { id: "voice-brief", role: "user", content: `Voice brief: ${content}` },
+    ]);
+
+    try {
+      const response = await fetch("/api/chat/interpret", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [content] }),
+      });
+      const result = await readResponse<InterpretationResponse>(response);
+      const summary = assistantSummary(result);
+      const missingQuestions = result.interpretation.ambiguities
+        .filter((item) => item.blocking)
+        .map((item) => item.clarificationQuestion);
+      setInterpretation(result);
+      setMessages((current) => [
+        ...current.filter((message) => message.id !== "voice-review"),
+        { id: "voice-review", role: "assistant", content: summary },
+      ]);
+      return { complete: result.canConfirm, missingQuestions, summary };
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "Could not review the spoken brief.";
+      setError(message);
+      throw cause;
+    } finally {
+      setPending(null);
+    }
+  }, []);
 
   const confirmRequest = async () => {
     if (!interpretation?.canConfirm || userTurns.length === 0 || pending) return;
@@ -159,6 +212,7 @@ export function ShoppingChat() {
           <span>Shopping Assistant</span>
         </Link>
         <nav aria-label="Chat actions">
+          <button className="new-chat" type="button" onClick={summonVoice} disabled={pending !== null}>Call Scout</button>
           <button className="new-chat" type="button" onClick={resetChat} disabled={pending !== null}>New chat</button>
           <Link className="details-link" href="/details">Details</Link>
         </nav>
@@ -170,9 +224,23 @@ export function ShoppingChat() {
           <h1 id="chat-title">What are you looking for?</h1>
           <p>Tell me the item, your budget, and any deal-breakers. I’ll watch the full delivered price.</p>
           {messages.length === 1 ? (
-            <button className="demo-prompt" type="button" onClick={() => setInput(DEMO_BRIEF)}>Try an example</button>
+            <div className="chat-demo-prompts" aria-label="Focused demo products">
+              {presentationProducts.map((profile) => (
+                <button className="demo-prompt demo-product-prompt" type="button" key={profile.id} onClick={() => setInput(profile.brief)}>
+                  <span className="demo-product-image" aria-hidden="true">
+                    <Image src={profile.image.src} alt="" fill sizes="32px" />
+                  </span>
+                  {profile.label}
+                </button>
+              ))}
+            </div>
           ) : null}
         </div>
+
+        <VoiceShoppingCompanion
+          disabled={pending !== null}
+          onBriefReview={reviewVoiceBrief}
+        />
 
         <div className="chat-messages" aria-live="polite">
           {messages.map((message) => (
@@ -196,7 +264,7 @@ export function ShoppingChat() {
                   <small>{confirmedRequest ? "Monitoring" : interpretation?.canConfirm ? "Ready" : "Needs details"}</small>
                 </div>
                 <dl>
-                  <div><dt>Size</dt><dd>{draft.requirements.size ?? "Not set"}</dd></div>
+                  <div><dt>Required variant</dt><dd>{draft.requirements.size ?? "Not set"}</dd></div>
                   <div><dt>Condition</dt><dd>{draft.requirements.condition ?? "Not set"}</dd></div>
                   <div><dt>Deliver to</dt><dd>{draft.requirements.destinationCountry ?? "Not set"}</dd></div>
                   <div><dt>Maximum delivered</dt><dd>{budget ? formatMoney(budget.currency, budget.minorUnits) : "Not set"}</dd></div>

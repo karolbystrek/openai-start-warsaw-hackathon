@@ -1,4 +1,5 @@
 import { checkpointApplication } from "@/application/container";
+import { AgentPaymentWorkflow } from "@/app/agent-payment-workflow";
 import { formatMoney } from "@/app/format-money";
 import { MandateControls } from "@/app/mandate-controls";
 import { RequestControls } from "@/app/request-controls";
@@ -54,13 +55,21 @@ export default async function Details() {
         requestActive={state.request.lifecycle === "ACTIVE"}
       />
 
+      <AgentPaymentWorkflow
+        key={decision?.id ?? state.request.id}
+        request={state.request}
+        processedEventCount={state.processedEvents.length}
+        latestEventId={state.processedEvents.at(-1)?.id ?? null}
+        decision={decision}
+      />
+
       <section className="grid">
         <article className="card request-card">
           <p className="card-label">Shopping request</p>
           <h2>{state.request.product.brand} {state.request.product.model}</h2>
           <p className="brief">“{state.request.originalText}”</p>
           <dl>
-            <div><dt>Required size</dt><dd>{state.request.requirements.size}</dd></div>
+            <div><dt>Required variant</dt><dd>{state.request.requirements.size}</dd></div>
             <div><dt>Condition</dt><dd>{state.request.requirements.condition}</dd></div>
             <div><dt>Destination</dt><dd>{state.request.requirements.destinationCountry}</dd></div>
             <div><dt>Hard cap</dt><dd>{formatMoney(state.request.requirements.maximumLandedCost.currency, state.request.requirements.maximumLandedCost.minorUnits)}</dd></div>
@@ -140,7 +149,7 @@ export default async function Details() {
       <section className="timeline card">
         <div className="section-heading">
           <div><p className="card-label">Merchant evidence</p><h2>Processed event timeline</h2></div>
-          <span className="event-count">{state.processedEvents.length} / 5 events</span>
+          <span className="event-count">{state.processedEvents.length} / {state.simulator.totalEvents} events</span>
         </div>
         {state.processedEvents.length ? (
           <ol>

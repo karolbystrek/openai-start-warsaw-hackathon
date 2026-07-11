@@ -7,9 +7,39 @@ import {
 } from "@/domain/contracts";
 import type { BriefInterpreter, ConfirmedBriefProjector } from "@/domain/services";
 import { presentationProducts, type PresentationProductProfile } from "@/domain/catalog/presentation-products";
+import { demoCatalog } from "@/domain/catalog/demo-catalog";
+import { normalizeText } from "@/domain/matching/normalize";
 
-export const BRIEF_PROMPT_VERSION = "shopping-brief-v1";
+export const BRIEF_PROMPT_VERSION = "shopping-brief-v2";
 export const BRIEF_OUTPUT_SCHEMA_VERSION = "shopping-brief-interpretation-v1";
+
+const sizedCategories = new Set(["shoes", "clothing", "apparel", "fashion"]);
+
+export const categoryRequiresSize = (category: string | null | undefined) => (
+  category ? sizedCategories.has(normalizeText(category)) : false
+);
+
+export const catalogProductFromText = (sourceText: string) => {
+  const normalized = normalizeText(sourceText);
+  const aliasMatches = demoCatalog.flatMap((entry) => entry.aliases
+    .filter((alias) => normalized.includes(normalizeText(alias)))
+    .map((alias) => ({ entry, specificity: normalizeText(alias).length })));
+  if (aliasMatches.length > 0) {
+    const ranked = aliasMatches.sort((left, right) => right.specificity - left.specificity);
+    const [first, second] = ranked;
+    if (first && (!second || first.specificity > second.specificity)) return first.entry;
+  }
+
+  const matches = demoCatalog.filter((entry) => {
+    const brand = normalizeText(entry.brand);
+    const model = normalizeText(entry.model);
+    return normalized.includes(brand) && model.split(" ").every((token) => normalized.includes(token));
+  }).sort((left, right) => normalizeText(right.model).length - normalizeText(left.model).length);
+  const [first, second] = matches;
+  if (!first) return null;
+  if (!second || normalizeText(first.model).length > normalizeText(second.model).length) return first;
+  return null;
+};
 
 const moneyFromText = (sourceText: string) => {
   const prefix = sourceText.match(/(?:under|below|maximum|max|up to|no more than)\s+(EUR|GBP|USD|€)\s*(\d+(?:[.,]\d{1,2})?)/i);
@@ -84,14 +114,18 @@ export class DeterministicBriefInterpreter implements BriefInterpreter {
     const requiredVariant = resolveRequiredVariant(text, profile);
     const maximumLandedCost = moneyFromText(text);
     const destinationCountry = /\b(poland|polska|\bpl\b)\b/i.test(text) ? "PL" : null;
-    const condition = /\bnew\s+only\b/i.test(text)
+    const condition = /\bnew(?:\s+only)?\b/i.test(text)
       ? "NEW" as const
       : /\brefurbished\b/i.test(text)
         ? "REFURBISHED" as const
-        : /\bused\s+only\b/i.test(text)
+        : /\bused(?:\s+only)?\b/i.test(text)
           ? "USED" as const
           : null;
-    const allowResellers = /\bno\s+(?:resellers?|marketplaces?)\b/i.test(text) ? false : true;
+    const allowResellers = /\bno\s+(?:resellers?|marketplaces?)\b/i.test(text)
+      ? false
+      : /\b(?:resellers?|marketplaces?)\s+(?:are\s+)?(?:allowed|ok|okay)|\binclude\s+(?:trusted\s+)?(?:resellers?|marketplaces?)\b/i.test(text)
+        ? true
+        : null;
     const mandateRequested = /\b(?:just\s+buy|auto(?:matically)?\s*buy|do\s+not\s+ask)\b/i.test(text);
     const mandateSuggested = /\b(?:buy|purchase)\b/i.test(text);
     const requireLowStock = mandateRequested ? /\b(?:low\s+stock|stock\s+is\s+low)\b/i.test(text) : null;
@@ -102,13 +136,13 @@ export class DeterministicBriefInterpreter implements BriefInterpreter {
     const mandateMinimum = mandateRequested && maximumLandedCost && withinMinor !== null
       ? { ...maximumLandedCost, minorUnits: Math.max(0, maximumLandedCost.minorUnits - withinMinor) }
       : null;
-
     const ambiguities: BriefAmbiguity[] = [];
     if (!profile) ambiguities.push(ambiguity("MISSING_PRODUCT", "requestDraft.product", "The product could not be resolved to one of the three supported presentation products.", "Do you want Nike Dunk Low, Iittala Aalto Vase, or Apple MacBook Air M3?"));
     if (!requiredVariant) ambiguities.push(ambiguity("MISSING_SIZE", "requestDraft.requirements.size", "The presentation-critical product variant is incomplete.", variantQuestion(profile)));
     if (!destinationCountry) ambiguities.push(ambiguity("MISSING_DESTINATION", "requestDraft.requirements.destinationCountry", "Delivered cost depends on the delivery destination.", "Which country should the offer be delivered to?"));
     if (!maximumLandedCost) ambiguities.push(ambiguity("MISSING_BUDGET", "requestDraft.requirements.maximumLandedCost", "No unambiguous monetary ceiling and currency were found.", "What is the maximum delivered price and currency?"));
     if (!condition) ambiguities.push(ambiguity("MISSING_CONDITION", "requestDraft.requirements.condition", "The acceptable product condition was not stated.", "Should the item be new, used, or refurbished?"));
+    if (allowResellers === null) ambiguities.push(ambiguity("MISSING_SELLER_POLICY", "requestDraft.requirements.allowResellers", "Seller-channel permission was not stated.", "May I include trusted resellers and marketplaces, or official retailers only?"));
     if (mandateSuggested && !mandateRequested) {
       ambiguities.push(ambiguity("AMBIGUOUS_PURCHASE_CONSENT", "mandateIntent", "The text suggests automation without explicit purchase consent.", "Do you explicitly authorize an automatic simulated purchase under these conditions?"));
     }

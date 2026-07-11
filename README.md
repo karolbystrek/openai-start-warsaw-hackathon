@@ -45,6 +45,12 @@ With `VOICE_INTAKE_ENABLED=true` and `OPENAI_API_KEY` configured, the chat suppo
 
 Dictation always lands in the textarea for review before it becomes a chat turn. Voice can propose a draft, but it cannot confirm hard constraints, activate a purchase mandate, or bypass the existing non-voice confirmation button. Set `VOICE_INTAKE_ENABLED=false` to remove audio without changing the text journey.
 
+For the realtime Scout companion, copy `.env.example` to `.env.local` and configure `OPENAI_API_KEY` and `OPENAI_MODEL`. `OPENAI_REALTIME_MODEL` defaults to `gpt-realtime-2.1-mini`.
+
+Scout can be invoked with **Call Scout**, **Talk to Scout**, the `/voice` command, or `Alt+V`. The browser requests microphone permission and connects over WebRTC using a short-lived token minted by the server; the project API key is never sent to the browser. Spoken intake updates the same structured request review as typed intake, and monitoring still requires the explicit **Confirm hard requirements** button.
+
+The focused demo selector contains three complete journeys: Nike Dunk Low EU 43, Iittala Aalto Vase 160 mm clear, and MacBook Air M3 13-inch with 16 GB RAM and 512 GB SSD. Each timeline first rejects a specified near match, then exposes a valid offer. A five-step workflow explains the agent's work and unlocks a one-time simulated payment only for the latest eligible alert after explicit UI consent. No payment credentials or real funds are used.
+
 ## Commands
 
 | Command | Purpose |
