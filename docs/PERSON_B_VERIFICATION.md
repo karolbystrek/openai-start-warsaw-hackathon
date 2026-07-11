@@ -39,5 +39,5 @@ pnpm db:reset
 1. Start from `pnpm db:reset` and run `pnpm dev`.
 2. Open <http://localhost:3000> and reset the scenario.
 3. Step through all five headline events.
-4. Confirm the first four observed offers show computed match evidence and that only the temporary trust-core adapter supplies decisions.
+4. Confirm the first four observed offers show the staged match method, per-stage evidence, canonical identity where resolved, and computed provenance.
 5. Confirm the final stock update changes the simulator timeline without Person B emitting a decision.

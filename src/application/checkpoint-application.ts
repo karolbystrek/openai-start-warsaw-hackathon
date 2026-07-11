@@ -1,8 +1,10 @@
 import { SimulationStateSchema, type SimulationState } from "@/application/simulation-state";
 import { recoverSimulator } from "@/application/simulator-recovery";
 import type { EvaluationRepository } from "@/application/evaluation-repository";
-import type { ShoppingRequest } from "@/domain/contracts";
+import { ShoppingRequestSchema, type ShoppingBriefInterpretation, type ShoppingRequest } from "@/domain/contracts";
 import type {
+  BriefInterpreter,
+  ConfirmedBriefProjector,
   LandedCostCalculator,
   MatchService,
   PolicyEvaluator,
@@ -21,12 +23,17 @@ export interface CheckpointApplicationDependencies {
   pricing: LandedCostCalculator;
   policy: PolicyEvaluator;
   receipts: ReceiptProjection;
+  briefInterpreter: BriefInterpreter;
+  briefProjector: ConfirmedBriefProjector;
 }
 
 export class CheckpointApplication {
   private mutationTail: Promise<void> = Promise.resolve();
+  private activeRequest: ShoppingRequest;
 
-  constructor(private readonly dependencies: CheckpointApplicationDependencies) {}
+  constructor(private readonly dependencies: CheckpointApplicationDependencies) {
+    this.activeRequest = dependencies.request;
+  }
 
   private async serializeMutation<T>(operation: () => Promise<T>): Promise<T> {
     const previous = this.mutationTail;
@@ -44,7 +51,8 @@ export class CheckpointApplication {
   }
 
   async getSimulationState(): Promise<SimulationState> {
-    const { request, runId, simulator, repository, receipts } = this.dependencies;
+    const { runId, simulator, repository, receipts } = this.dependencies;
+    const request = this.activeRequest;
     const processedEvents = [...await repository.listEvents(runId)];
     recoverSimulator(simulator, processedEvents);
     const decisions = [...await repository.listDecisions(request.id)];
@@ -62,12 +70,34 @@ export class CheckpointApplication {
     });
   }
 
+  async interpretBrief(sourceText: string): Promise<ShoppingBriefInterpretation> {
+    return this.dependencies.briefInterpreter.interpret(sourceText);
+  }
+
+  async activateBrief(sourceText: string): Promise<{
+    interpretation: ShoppingBriefInterpretation;
+    state: SimulationState | null;
+  }> {
+    return this.serializeMutation(async () => {
+      const interpretation = await this.dependencies.briefInterpreter.interpret(sourceText);
+      const projected = this.dependencies.briefProjector.project(interpretation);
+      if (!projected) return { interpretation, state: null };
+
+      this.activeRequest = ShoppingRequestSchema.parse({ ...projected, lifecycle: "ACTIVE" });
+      this.dependencies.simulator.reset();
+      await this.dependencies.repository.reset();
+      await this.dependencies.repository.saveRequest(this.activeRequest);
+      return { interpretation, state: await this.getSimulationState() };
+    });
+  }
+
   async stepSimulation(expectedSequence: number): Promise<SimulationState> {
     return this.serializeMutation(() => this.stepSimulationOnce(expectedSequence));
   }
 
   private async stepSimulationOnce(expectedSequence: number): Promise<SimulationState> {
-    const { request, runId, simulator, repository, matching, verification, pricing, policy } = this.dependencies;
+    const { runId, simulator, repository, matching, verification, pricing, policy } = this.dependencies;
+    const request = this.activeRequest;
     await repository.saveRequest(request);
     recoverSimulator(simulator, await repository.listEvents(runId));
     if (simulator.getState().nextSequence !== expectedSequence) return this.getSimulationState();
@@ -107,7 +137,8 @@ export class CheckpointApplication {
   }
 
   private async resetSimulationOnce(): Promise<SimulationState> {
-    const { request, simulator, repository } = this.dependencies;
+    const { simulator, repository } = this.dependencies;
+    const request = this.activeRequest;
     simulator.reset();
     await repository.reset();
     await repository.saveRequest(request);

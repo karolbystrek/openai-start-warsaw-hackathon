@@ -1,9 +1,21 @@
 import { checkpointApplication } from "@/application/container";
+import { BriefIntake } from "@/app/brief-intake";
 import { SimulatorControls } from "@/app/simulator-controls";
 
 export const dynamic = "force-dynamic";
 
 const formatMoney = (currency: string, minorUnits: number) => `${currency} ${(minorUnits / 100).toFixed(2)}`;
+
+const eventTitle = (event: Awaited<ReturnType<typeof checkpointApplication.getSimulationState>>["processedEvents"][number]) => {
+  switch (event.type) {
+    case "OFFER_OBSERVED": return event.offer.title;
+    case "STOCK_CHANGED": return `Stock changed to ${event.stockState.replaceAll("_", " ").toLowerCase()}`;
+    case "PRICE_CHANGED": return "Merchant price changed";
+    case "COUPON_CHANGED": return `Coupon changed to ${event.status.toLowerCase()}`;
+    case "FX_CHANGED": return `${event.baseCurrency}/${event.quoteCurrency} FX changed`;
+    case "SELLER_CHANGED": return `Seller changed to ${event.status.toLowerCase()}`;
+  }
+};
 
 export default async function Home() {
   const state = await checkpointApplication.getSimulationState();
@@ -14,9 +26,9 @@ export default async function Home() {
     <main>
       <header className="hero">
         <div>
-          <p className="eyebrow">Checkpoint 1 · deterministic fixture</p>
+          <p className="eyebrow">Integrated deterministic runtime</p>
           <h1>AI Shopping Assistant</h1>
-          <p className="lede">One shared contract from simulated merchant evidence to an auditable decision.</p>
+          <p className="lede">A real interpreted brief and staged product match, evaluated against repeatable simulated merchant evidence.</p>
         </div>
         <div className="clock">
           <span>Virtual time</span>
@@ -24,6 +36,8 @@ export default async function Home() {
           <small>{state.simulator.status}</small>
         </div>
       </header>
+
+      <BriefIntake initialText={state.request.originalText} />
 
       <SimulatorControls
         complete={state.simulator.status === "COMPLETE"}
@@ -55,6 +69,28 @@ export default async function Home() {
               </dl>
             </>
           ) : <p className="empty">Step the simulator to load the first validated offer.</p>}
+        </article>
+
+        <article className="card match-card">
+          <p className="card-label">Person B · product identity</p>
+          {decision ? (
+            <>
+              <div className="section-heading compact">
+                <h2>{decision.match.method.replaceAll("_", " ")}</h2>
+                <span className={`status-pill ${decision.match.overall.toLowerCase()}`}>{decision.match.overall}</span>
+              </div>
+              {decision.match.canonicalProductId ? <p className="canonical-id">Canonical: {decision.match.canonicalProductId}</p> : null}
+              <ol className="match-stages">
+                {decision.match.stages?.map((stage) => (
+                  <li key={stage.stage}>
+                    <span className={stage.result.toLowerCase()}>{stage.result}</span>
+                    <div><strong>{stage.stage.replaceAll("_", " ")}</strong><small>{stage.evidence[0]}</small></div>
+                  </li>
+                ))}
+              </ol>
+              <small>{decision.match.provenance.kind} · {decision.match.provenance.source}</small>
+            </>
+          ) : <p className="empty">The staged catalog match and evidence trace appear after an offer is observed.</p>}
         </article>
 
         <article className={`card decision-card ${decision ? decision.outcome.toLowerCase() : ""}`}>
@@ -89,6 +125,27 @@ export default async function Home() {
             </>
           ) : <p className="empty">The authoritative cost projection appears with a decision.</p>}
         </article>
+      </section>
+
+      <section className="timeline card">
+        <div className="section-heading">
+          <div><p className="card-label">Person B · simulator evidence</p><h2>Processed event timeline</h2></div>
+          <span className="event-count">{state.processedEvents.length} / 5 events</span>
+        </div>
+        {state.processedEvents.length ? (
+          <ol>
+            {state.processedEvents.map((processed) => {
+              const eventDecision = state.decisions.find((item) => item.eventId === processed.id);
+              return (
+                <li key={processed.id}>
+                  <span className="sequence">{processed.sequence + 1}</span>
+                  <div><strong>{eventTitle(processed)}</strong><small>{processed.type.replaceAll("_", " ")} · {new Date(processed.occurredAt).toLocaleTimeString("en-GB", { timeZone: "UTC" })} UTC</small></div>
+                  {eventDecision ? <span className={`outcome ${eventDecision.outcome.toLowerCase()}`}>{eventDecision.outcome}</span> : <span className="evidence-only">Evidence only</span>}
+                </li>
+              );
+            })}
+          </ol>
+        ) : <p className="empty">No merchant evidence has been processed yet.</p>}
       </section>
 
       <section className="receipt card">
