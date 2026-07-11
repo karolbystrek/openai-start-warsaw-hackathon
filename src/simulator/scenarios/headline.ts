@@ -9,7 +9,7 @@ import {
   type SimulationEvent,
 } from "@/domain/contracts";
 
-export const HEADLINE_FIXTURE_VERSION = "headline-v2";
+export const HEADLINE_FIXTURE_VERSION = "headline-v3";
 export const HEADLINE_SEED = "solidgate-headline-2026";
 const REQUEST_TIME = "2026-07-11T08:00:00.000Z";
 const WRONG_VARIANT_TIME = "2026-07-11T08:01:00.000Z";
@@ -131,7 +131,7 @@ const makeEvidence = (offer: OfferSnapshot, input?: { coupon?: "PASS" | "FAIL"; 
     schemaVersion: 1,
     id: `evidence-${offer.id}`,
     offerId: offer.id,
-    seller: item("seller", input?.seller ?? "PASS", input?.seller === "FAIL" ? "UNVERIFIED" : "VERIFIED_MERCHANT"),
+    seller: item("seller", input?.seller ?? "PASS", input?.seller === "FAIL" ? "UNVERIFIED" : "MERCHANT_OWNED"),
     stock: item("stock", "PASS", "IN_STOCK"),
     condition: item("condition", "PASS", "NEW"),
     destination: item("destination", "PASS", "PL"),

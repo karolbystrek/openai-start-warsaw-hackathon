@@ -22,6 +22,13 @@
       "when": 1783776849936,
       "tag": "0002_serious_warpath",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1783780286132,
+      "tag": "0003_curly_synch",
+      "breakpoints": true
     }
   ]
 }

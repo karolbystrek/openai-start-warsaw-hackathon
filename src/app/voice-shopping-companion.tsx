@@ -5,7 +5,6 @@ import {
   RealtimeAgent,
   RealtimeSession,
   tool,
-  type RealtimeItem,
 } from "@openai/agents/realtime";
 import { z } from "zod";
 
@@ -17,7 +16,8 @@ export type VoiceBriefReview = {
 
 type VoiceShoppingCompanionProps = {
   disabled?: boolean;
-  onBriefReview: (brief: string) => Promise<VoiceBriefReview>;
+  onBriefReview: (brief: string, userTranscript: string | null) => Promise<VoiceBriefReview>;
+  onUserTranscript: (transcript: string) => void;
 };
 
 type VoicePhase = "idle" | "connecting" | "listening" | "thinking" | "speaking" | "error";
@@ -38,17 +38,6 @@ const phaseLabel: Record<VoicePhase, string> = {
   error: "Needs attention",
 };
 
-const latestAssistantTranscript = (history: RealtimeItem[]) => {
-  for (const item of [...history].reverse()) {
-    if (item.type !== "message" || item.role !== "assistant") continue;
-    for (const content of [...item.content].reverse()) {
-      if (content.type === "output_audio" && content.transcript?.trim()) return content.transcript.trim();
-      if (content.type === "output_text" && content.text.trim()) return content.text.trim();
-    }
-  }
-  return null;
-};
-
 async function readTokenResponse(response: Response): Promise<SessionTokenResponse> {
   const payload = await response.json() as SessionTokenResponse;
   if (!response.ok || !payload.clientSecret) {
@@ -60,15 +49,16 @@ async function readTokenResponse(response: Response): Promise<SessionTokenRespon
 export function VoiceShoppingCompanion({
   disabled = false,
   onBriefReview,
+  onUserTranscript,
 }: VoiceShoppingCompanionProps) {
   const sessionRef = useRef<RealtimeSession | null>(null);
+  const emittedUserTranscriptIdsRef = useRef(new Set<string>());
+  const latestUserTranscriptRef = useRef<string | null>(null);
   const [phase, setPhase] = useState<VoicePhase>("idle");
   const [visible, setVisible] = useState(false);
   const [connected, setConnected] = useState(false);
   const [muted, setMuted] = useState(false);
   const [briefReady, setBriefReady] = useState(false);
-  const [missingQuestions, setMissingQuestions] = useState<string[]>([]);
-  const [transcript, setTranscript] = useState("Call Scout when you want to talk through your search.");
   const [error, setError] = useState<string | null>(null);
 
   const stopVoice = useCallback(() => {
@@ -84,8 +74,8 @@ export function VoiceShoppingCompanion({
     if (disabled || sessionRef.current || phase === "connecting") return;
     setError(null);
     setBriefReady(false);
-    setMissingQuestions([]);
-    setTranscript("Scout is thinking and getting ready to listen…");
+    emittedUserTranscriptIdsRef.current.clear();
+    latestUserTranscriptRef.current = null;
     setPhase("connecting");
 
     try {
@@ -99,9 +89,8 @@ export function VoiceShoppingCompanion({
         }),
         execute: async ({ brief }) => {
           setPhase("thinking");
-          const review = await onBriefReview(brief);
+          const review = await onBriefReview(brief, latestUserTranscriptRef.current);
           setBriefReady(review.complete);
-          setMissingQuestions(review.missingQuestions);
           return JSON.stringify({
             status: review.complete ? "READY_FOR_UI_CONFIRMATION" : "NEEDS_CLARIFICATION",
             missingQuestions: review.missingQuestions,
@@ -158,8 +147,19 @@ export function VoiceShoppingCompanion({
       session.on("audio_stopped", () => setPhase("listening"));
       session.on("audio_interrupted", () => setPhase("listening"));
       session.on("history_updated", (history) => {
-        const latest = latestAssistantTranscript(history);
-        if (latest) setTranscript(latest);
+        for (const item of history) {
+          if (item.type !== "message" || item.role !== "user" || item.status !== "completed") continue;
+          if (emittedUserTranscriptIdsRef.current.has(item.itemId)) continue;
+          const transcript = item.content
+            .filter((content) => content.type === "input_audio")
+            .map((content) => content.transcript?.trim())
+            .filter((content): content is string => Boolean(content))
+            .join(" ");
+          if (!transcript) continue;
+          emittedUserTranscriptIdsRef.current.add(item.itemId);
+          latestUserTranscriptRef.current = transcript;
+          onUserTranscript(transcript);
+        }
       });
       session.on("error", () => {
         setError("The voice connection was interrupted. You can reconnect or keep typing.");
@@ -178,7 +178,7 @@ export function VoiceShoppingCompanion({
       setError(cause instanceof Error ? cause.message : "Could not start voice intake.");
       setPhase("error");
     }
-  }, [disabled, onBriefReview, phase]);
+  }, [disabled, onBriefReview, onUserTranscript, phase]);
 
   const toggleMute = () => {
     const session = sessionRef.current;
@@ -237,9 +237,10 @@ export function VoiceShoppingCompanion({
           </div>
           <span className={`voice-state ${briefReady ? "ready" : phase}`}>{briefReady ? "Brief ready" : phaseLabel[phase]}</span>
         </div>
-        <p className="scout-transcript" aria-live="polite">“{transcript}”</p>
-        {missingQuestions.length > 0 ? (
-          <p className="scout-next"><strong>Next:</strong> {missingQuestions[0]}</p>
+        {phase === "connecting" || phase === "thinking" ? (
+          <span className="scout-thinking-dots" aria-label="Scout is thinking">
+            <i /><i /><i />
+          </span>
         ) : null}
         {error ? <p className="voice-error" role="alert">{error}</p> : null}
       </div>

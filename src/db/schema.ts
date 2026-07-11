@@ -4,6 +4,32 @@ const timestamps = {
   createdAt: text("created_at").notNull(),
 };
 
+export const chats = sqliteTable("chats", {
+  id: text("id").primaryKey(),
+  userSessionId: text("user_session_id").notNull(),
+  title: text("title").notNull(),
+  statePayload: text("state_payload").notNull().default("{}"),
+  updatedAt: text("updated_at").notNull(),
+  ...timestamps,
+});
+
+export const chatMessages = sqliteTable("chat_messages", {
+  id: text("id").primaryKey(),
+  chatId: text("chat_id").notNull().references(() => chats.id, { onDelete: "cascade" }),
+  role: text("role").notNull(),
+  content: text("content").notNull(),
+  ...timestamps,
+});
+
+export const chatMonitoringRequests = sqliteTable("chat_monitoring_requests", {
+  chatId: text("chat_id").notNull().references(() => chats.id, { onDelete: "cascade" }),
+  requestId: text("request_id").notNull(),
+  requestVersion: integer("request_version").notNull(),
+  ...timestamps,
+}, (table) => [
+  uniqueIndex("chat_monitoring_request_idx").on(table.chatId, table.requestId, table.requestVersion),
+]);
+
 export const simulationRuns = sqliteTable("simulation_runs", {
   id: text("id").primaryKey(),
   seed: text("seed").notNull(),
