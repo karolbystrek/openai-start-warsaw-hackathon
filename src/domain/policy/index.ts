@@ -13,6 +13,7 @@ import {
   type ShoppingRequest,
 } from "@/domain/contracts";
 import { assessNotification } from "@/domain/notifications";
+import { normalizeSize } from "@/domain/matching/normalize";
 import type { PolicyEvaluator } from "@/domain/services";
 import { isEvidenceFresh } from "@/domain/verification";
 
@@ -139,9 +140,14 @@ const requirement = (name: string, result: CheckResult, explanation: string): Re
   explanation,
 });
 
-const compareAttribute = (actual: string | null, expected: string, label: string): RequirementResult => {
+const compareAttribute = (
+  actual: string | null,
+  expected: string,
+  label: string,
+  normalize: (value: string) => string = (value) => value.trim().toUpperCase(),
+): RequirementResult => {
   if (actual === null) return requirement(label, "UNKNOWN", `${label} is missing from the offer.`);
-  const passed = actual.trim().toUpperCase() === expected.trim().toUpperCase();
+  const passed = normalize(actual) === normalize(expected);
   return requirement(label, passed ? "PASS" : "FAIL", passed ? `${label} matches ${expected}.` : `${label} ${actual} does not match ${expected}.`);
 };
 
@@ -218,7 +224,7 @@ export class DeterministicPolicyEvaluator implements PolicyEvaluator {
     const requirements: RequirementResult[] = [
       requirement("request-active", request.lifecycle === "ACTIVE" ? "PASS" : "FAIL", `Request lifecycle is ${request.lifecycle}.`),
       requirement("identity", match.overall, `Product identity assessed by ${match.method}.`),
-      compareAttribute(offer.attributes.size, request.requirements.size, "size"),
+      compareAttribute(offer.attributes.size, request.requirements.size, "size", normalizeSize),
       compareAttribute(offer.attributes.condition, request.requirements.condition, "condition"),
       requirement("quantity", offer.attributes.quantity === request.requirements.quantity ? "PASS" : "FAIL", `Offer quantity is ${offer.attributes.quantity}; required quantity is ${request.requirements.quantity}.`),
       requirement("record-integrity", recordIntegrityPasses ? "PASS" : "FAIL", recordIntegrityPasses ? "Event, request, offer, evidence, match, and landed-cost identifiers are consistent." : "Cross-record identifiers are inconsistent."),

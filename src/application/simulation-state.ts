@@ -18,6 +18,7 @@ export const SimulationStateSchema = z.object({
     totalEvents: z.number().int().nonnegative(),
     currentEvent: SimulationEventSchema.nullable(),
   }),
+  availableEvents: z.array(SimulationEventSchema),
   processedEvents: z.array(SimulationEventSchema),
   decisions: z.array(DecisionRecordSchema),
   currentDecision: DecisionRecordSchema.nullable(),
