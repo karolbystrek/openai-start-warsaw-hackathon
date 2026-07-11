@@ -14,6 +14,14 @@ export async function POST(request: Request) {
   if (!command.success) {
     return Response.json({ error: "A valid request lifecycle action is required." }, { status: 400 });
   }
-  const state = await checkpointApplication.changeRequestLifecycle(command.data.action);
-  return Response.json(SimulationStateSchema.parse(state));
+  try {
+    const state = await checkpointApplication.changeRequestLifecycle(command.data.action);
+    return Response.json(SimulationStateSchema.parse(state));
+  } catch (error) {
+    console.error("Could not update the shopping request lifecycle.", error);
+    return Response.json(
+      { error: error instanceof Error ? error.message : "Could not update the shopping request." },
+      { status: 500 },
+    );
+  }
 }

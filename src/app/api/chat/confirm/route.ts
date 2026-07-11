@@ -12,6 +12,14 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = await shoppingChatApplication.confirm(command.data.messages);
-  return Response.json(result);
+  try {
+    const result = await shoppingChatApplication.confirm(command.data.messages);
+    return Response.json(result);
+  } catch (error) {
+    console.error("Could not confirm the shopping brief.", error);
+    return Response.json(
+      { error: error instanceof Error ? error.message : "Could not confirm the shopping brief." },
+      { status: 500 },
+    );
+  }
 }

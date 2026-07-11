@@ -16,6 +16,7 @@ export interface DecisionScope {
 }
 
 export interface EvaluationRepository extends CheckpointRepository {
+  getLatestRequest(effectiveAt?: string): Promise<ShoppingRequest | null>;
   getCurrentRequest(requestId: string, effectiveAt?: string): Promise<ShoppingRequest | null>;
   saveRequestTransition(request: ShoppingRequest, revokedMandate?: Mandate): Promise<void>;
   listDecisionsForRun(scope: DecisionScope): Promise<readonly DecisionRecord[]>;

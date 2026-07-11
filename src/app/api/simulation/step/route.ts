@@ -18,8 +18,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const state = SimulationStateSchema.parse(
-    await checkpointApplication.stepSimulation(command.data.expectedSequence),
-  );
-  return Response.json(state);
+  try {
+    const state = SimulationStateSchema.parse(
+      await checkpointApplication.stepSimulation(command.data.expectedSequence),
+    );
+    return Response.json(state);
+  } catch (error) {
+    console.error("Could not step the simulation.", error);
+    return Response.json(
+      { error: error instanceof Error ? error.message : "Could not step the scenario." },
+      { status: 500 },
+    );
+  }
 }

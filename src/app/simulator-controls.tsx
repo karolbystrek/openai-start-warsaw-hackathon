@@ -28,11 +28,14 @@ export function SimulatorControls({
           }
         : { method: "POST" };
       const response = await fetch(`/api/simulation/${action}`, request);
-      if (!response.ok) throw new Error(`Simulation ${action} failed.`);
+      const payload = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) throw new Error(payload?.error ?? `Simulation ${action} failed.`);
       router.refresh();
     } catch (cause) {
       console.error(cause);
-      setError(`Could not ${action} the scenario. The saved state is unchanged; try again.`);
+      setError(cause instanceof Error
+        ? cause.message
+        : `Could not ${action} the scenario. The saved state is unchanged; try again.`);
     } finally {
       setPending(null);
     }

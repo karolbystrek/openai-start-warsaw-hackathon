@@ -136,6 +136,14 @@ export class DrizzleCheckpointRepository implements EvaluationRepository {
     return row ? ShoppingRequestSchema.parse(JSON.parse(row.payload)) : null;
   }
 
+  async getLatestRequest(effectiveAt?: string): Promise<ShoppingRequest | null> {
+    const query = this.db.select().from(requestVersions);
+    const row = (effectiveAt ? query.where(lte(requestVersions.effectiveAt, effectiveAt)) : query)
+      .orderBy(desc(requestVersions.createdAt), desc(requestVersions.version))
+      .get();
+    return row ? ShoppingRequestSchema.parse(JSON.parse(row.payload)) : null;
+  }
+
   async getCurrentRequest(requestId: string, effectiveAt?: string): Promise<ShoppingRequest | null> {
     const condition = effectiveAt
       ? and(eq(requestVersions.id, requestId), lte(requestVersions.effectiveAt, effectiveAt))

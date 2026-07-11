@@ -45,8 +45,9 @@ function assistantSummary(result: InterpretationResponse): string {
 }
 
 async function readResponse<T>(response: Response): Promise<T> {
-  const payload = await response.json() as T & { error?: string };
-  if (!response.ok) throw new Error(payload.error ?? "The shopping assistant request failed.");
+  const payload = await response.json().catch(() => null) as (T & { error?: string }) | null;
+  if (!response.ok) throw new Error(payload?.error ?? "The shopping assistant request failed.");
+  if (!payload) throw new Error("The shopping assistant returned an empty response.");
   return payload;
 }
 

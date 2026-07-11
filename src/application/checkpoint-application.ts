@@ -300,8 +300,12 @@ export class CheckpointApplication {
   }
 
   private async activateRequestOnce(request: ShoppingRequest): Promise<SimulationState> {
-    this.activeRequest = ShoppingRequestSchema.parse({ ...request, lifecycle: "ACTIVE" });
     this.dependencies.simulator.reset();
+    this.activeRequest = ShoppingRequestSchema.parse({
+      ...request,
+      lifecycle: "ACTIVE",
+      effectiveAt: this.dependencies.simulator.getState().virtualTime,
+    });
     await this.dependencies.repository.resetToRequest(this.activeRequest);
     return this.getSimulationState();
   }
@@ -474,7 +478,8 @@ export class CheckpointApplication {
   private async loadCurrentRequest(effectiveAt?: string): Promise<ShoppingRequest> {
     const { initialRequest, repository } = this.dependencies;
     const fallback = this.activeRequest ?? initialRequest;
-    const current = await repository.getCurrentRequest(fallback.id, effectiveAt);
+    const current = await repository.getCurrentRequest(fallback.id, effectiveAt)
+      ?? await repository.getLatestRequest(effectiveAt);
     if (current) {
       this.activeRequest = current;
       return current;

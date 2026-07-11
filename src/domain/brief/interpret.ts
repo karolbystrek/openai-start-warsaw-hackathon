@@ -11,11 +11,17 @@ export const BRIEF_PROMPT_VERSION = "shopping-brief-v1";
 export const BRIEF_OUTPUT_SCHEMA_VERSION = "shopping-brief-interpretation-v1";
 
 const moneyFromText = (sourceText: string) => {
-  const prefix = sourceText.match(/(?:under|below|maximum|max|up to|no more than)\s+(EUR|GBP|USD|€)\s*(\d+(?:[.,]\d{1,2})?)/i);
-  const suffix = sourceText.match(/(?:under|below|maximum|max|up to|no more than)\s+(\d+(?:[.,]\d{1,2})?)\s*(EUR|GBP|USD|€)/i);
-  const amount = prefix?.[2] ?? suffix?.[1];
+  const qualifier = "(?:under|below|maximum|max|up to|no more than|(?:update|change|set)(?:\\s+the)?(?:\\s+maximum)?(?:\\s+delivered)?(?:\\s+price|\\s+budget)?\\s+to)";
+  const matches = [
+    ...sourceText.matchAll(new RegExp(`${qualifier}\\s+(EUR|GBP|USD|€)\\s*(\\d+(?:[.,]\\d{1,2})?)`, "gi")),
+    ...sourceText.matchAll(new RegExp(`${qualifier}\\s+(\\d+(?:[.,]\\d{1,2})?)\\s*(EUR|GBP|USD|€)`, "gi")),
+  ].sort((left, right) => (left.index ?? 0) - (right.index ?? 0));
+  const match = matches.at(-1);
+  if (!match) return null;
+  const currencyFirst = /^(?:EUR|GBP|USD|€)$/i.test(match[1] ?? "");
+  const currencyToken = currencyFirst ? match[1] : match[2];
+  const amount = currencyFirst ? match[2] : match[1];
   if (!amount) return null;
-  const currencyToken = prefix?.[1] ?? suffix?.[2];
   const currency = currencyToken === "€" ? "EUR" : currencyToken?.toUpperCase();
   if (!currency) return null;
   const [whole = "0", fraction = ""] = amount.replace(",", ".").split(".");
@@ -36,7 +42,7 @@ export class DeterministicBriefInterpreter implements BriefInterpreter {
     const text = sourceText.trim();
     const lower = text.toLowerCase();
     const isNikeDunkLow = /\bnike\b/.test(lower) && /\bdunk\s*low\b/.test(lower);
-    const sizeMatch = text.match(/\b(?:size|eu)\s*(\d{2}(?:[.,]5)?)\b/i);
+    const sizeMatch = [...text.matchAll(/\b(?:size|eu)\s*(\d{2}(?:[.,]5)?)\b/gi)].at(-1);
     const maximumLandedCost = moneyFromText(text);
     const destinationCountry = /\b(poland|polska|\bpl\b)\b/i.test(text) ? "PL" : null;
     const condition = /\bnew\s+only\b/i.test(text)
