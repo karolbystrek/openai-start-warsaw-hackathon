@@ -2,7 +2,11 @@
 
 Integrated alert slice for the OpenAI × START Warsaw Hackathon Solidgate case. The app interprets and confirms a natural-language brief, matches deterministic merchant events through the real staged catalog matcher, applies the trust-core services, stores audit records in SQLite, and renders the rejection-to-alert journey.
 
-The Next.js foundation was generated with `npx create-next-app@latest` defaults and pnpm, then organized under `src/` to preserve the ownership boundaries in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+
+
+https://github.com/user-attachments/assets/b5f570c7-f219-4ea4-9295-819b8d232f28
+
+
 
 ## Start locally
 
