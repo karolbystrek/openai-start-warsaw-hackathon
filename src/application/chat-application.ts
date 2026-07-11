@@ -15,6 +15,19 @@ export interface ChatInterpretationResult {
   canConfirm: boolean;
 }
 
+export function chatAssistantSummary(result: ChatInterpretationResult): string {
+  const questions = result.interpretation.ambiguities
+    .filter((item) => item.blocking)
+    .map((item) => item.clarificationQuestion);
+  if (questions.length > 0) {
+    const { brand, model } = result.interpretation.requestDraft.product;
+    const product = [brand, model].filter(Boolean).join(" ");
+    const remaining = questions.length - 1;
+    return `${product ? `I’m tracking ${product}. ` : "Let’s make the search precise. "}${questions[0]}${remaining > 0 ? ` We’ll cover ${remaining} more ${remaining === 1 ? "detail" : "details"} after that.` : ""}`;
+  }
+  return "The brief is complete. Review the hard constraints below and confirm them before monitoring is activated.";
+}
+
 export interface ChatConfirmationResult extends ChatInterpretationResult {
   confirmed: boolean;
   request: ShoppingRequest | null;
