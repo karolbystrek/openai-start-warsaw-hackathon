@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 import { formatMoney } from "@/app/format-money";
 import type {
@@ -40,7 +41,7 @@ function assistantSummary(result: InterpretationResponse): string {
     const count = result.interpretation.ambiguities.length;
     return `I have a partial brief, but ${count} ${count === 1 ? "detail is" : "details are"} still required before monitoring can start.`;
   }
-  return "The brief is complete. Review the hard constraints below and confirm them before monitoring is activated.";
+  return "I’ve got it. Check the details below, then confirm and I’ll start watching for the right deal.";
 }
 
 async function readResponse<T>(response: Response): Promise<T> {
@@ -51,6 +52,7 @@ async function readResponse<T>(response: Response): Promise<T> {
 
 export function ShoppingChat() {
   const router = useRouter();
+  const conversationEndRef = useRef<HTMLDivElement>(null);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [userTurns, setUserTurns] = useState<string[]>([]);
   const [input, setInput] = useState("");
@@ -144,129 +146,102 @@ export function ShoppingChat() {
   const draft = interpretation?.interpretation.requestDraft;
   const budget = draft?.requirements.maximumLandedCost;
 
+  useEffect(() => {
+    if (userTurns.length === 0) return;
+    conversationEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [interpretation, messages, pending, userTurns.length]);
+
   return (
-    <section className="chat-section" aria-labelledby="chat-title">
-      <div className="chat-heading">
-        <div>
-          <p className="eyebrow">Request intake</p>
-          <h2 id="chat-title">Start with a conversation</h2>
-          <p>Confirm the brief first. Merchant events stay isolated until the request is complete.</p>
+    <main className="chat-page">
+      <header className="chat-topbar">
+        <Link className="chat-brand" href="/" aria-label="AI Shopping Assistant home">
+          <span className="brand-mark">S</span>
+          <span>Shopping Assistant</span>
+        </Link>
+        <nav aria-label="Chat actions">
+          <button className="new-chat" type="button" onClick={resetChat} disabled={pending !== null}>New chat</button>
+          <Link className="details-link" href="/details">Details</Link>
+        </nav>
+      </header>
+
+      <section className="chat-thread" aria-labelledby="chat-title">
+        <div className="chat-welcome">
+          <span className="assistant-orb" aria-hidden="true">S</span>
+          <h1 id="chat-title">What are you looking for?</h1>
+          <p>Tell me the item, your budget, and any deal-breakers. I’ll watch the full delivered price.</p>
+          {messages.length === 1 ? (
+            <button className="demo-prompt" type="button" onClick={() => setInput(DEMO_BRIEF)}>Try an example</button>
+          ) : null}
         </div>
-        <span className="connector-status"><i /> Event connector ready</span>
-      </div>
 
-      <div className="chat-layout">
-        <div className="chat-panel">
-          <div className="chat-messages" aria-live="polite">
-            {messages.map((message) => (
-              <div className={`chat-message ${message.role}`} key={message.id}>
-                <span>{message.role === "assistant" ? "Assistant" : "You"}</span>
-                <p>{message.content}</p>
-              </div>
-            ))}
-            {pending === "interpret" ? (
-              <div className="chat-message assistant thinking">
-                <span>Assistant</span><p>Structuring your requirements…</p>
-              </div>
-            ) : null}
-          </div>
+        <div className="chat-messages" aria-live="polite">
+          {messages.map((message) => (
+            <div className={`chat-message ${message.role}`} key={message.id}>
+              <span>{message.role === "assistant" ? "Assistant" : "You"}</span>
+              <p>{message.content}</p>
+            </div>
+          ))}
+          {pending === "interpret" ? (
+            <div className="chat-message assistant thinking">
+              <span>Assistant</span><p>Reading your requirements…</p>
+            </div>
+          ) : null}
 
-          <form className="chat-composer" onSubmit={sendMessage}>
-            <label htmlFor="shopping-message">Your shopping brief or clarification</label>
-            <textarea
-              id="shopping-message"
-              maxLength={2_000}
-              onChange={(event) => setInput(event.target.value)}
-              placeholder="e.g. Nike Dunk Low, EU 43, under EUR 80 delivered to Poland…"
-              rows={3}
-              value={input}
-            />
-            <div className="composer-actions">
-              <button
-                className="text-button"
-                type="button"
-                onClick={() => setInput(DEMO_BRIEF)}
-                disabled={pending !== null}
-              >
-                Use demo brief
-              </button>
-              <div>
-                <button className="text-button" type="button" onClick={resetChat} disabled={pending !== null}>Clear</button>
-                <button className="send-button" type="submit" disabled={!input.trim() || pending !== null}>
-                  {pending === "interpret" ? "Reading…" : "Send"}
+          {draft ? (
+            <div className="chat-message assistant chat-brief-message">
+              <span>Your brief</span>
+              <div className="chat-brief">
+                <div className="chat-brief-heading">
+                  <h2>{draft.product.brand} {draft.product.model}</h2>
+                  <small>{confirmedRequest ? "Monitoring" : interpretation?.canConfirm ? "Ready" : "Needs details"}</small>
+                </div>
+                <dl>
+                  <div><dt>Size</dt><dd>{draft.requirements.size ?? "Not set"}</dd></div>
+                  <div><dt>Condition</dt><dd>{draft.requirements.condition ?? "Not set"}</dd></div>
+                  <div><dt>Deliver to</dt><dd>{draft.requirements.destinationCountry ?? "Not set"}</dd></div>
+                  <div><dt>Maximum delivered</dt><dd>{budget ? formatMoney(budget.currency, budget.minorUnits) : "Not set"}</dd></div>
+                  <div><dt>Seller</dt><dd>{draft.requirements.allowResellers === false ? "No resellers" : draft.requirements.allowResellers ? "Resellers allowed" : "Not set"}</dd></div>
+                </dl>
+                {interpretation?.interpretation.ambiguities.length ? (
+                  <ul className="chat-questions">
+                    {interpretation.interpretation.ambiguities.map((item) => (
+                      <li key={`${item.code}-${item.fieldPath}`}>{item.clarificationQuestion}</li>
+                    ))}
+                  </ul>
+                ) : null}
+                {interpretation?.interpretation.mandateIntent.requested ? (
+                  <p className="chat-safety-note">This starts monitoring only. Buying automatically always requires separate approval.</p>
+                ) : null}
+                <button
+                  className="confirm-brief"
+                  type="button"
+                  onClick={confirmRequest}
+                  disabled={!interpretation?.canConfirm || pending !== null || confirmedRequest !== null}
+                >
+                  {pending === "confirm" ? "Confirming…" : confirmedRequest ? "Monitoring active" : "Confirm and start monitoring"}
                 </button>
               </div>
             </div>
-          </form>
-          {error ? <p className="chat-error" role="alert">{error}</p> : null}
+          ) : null}
+          <div className="conversation-end" ref={conversationEndRef} />
         </div>
+      </section>
 
-        <aside className="brief-review" aria-label="Interpreted shopping brief">
-          <div className="review-header">
-            <div>
-              <p className="card-label">Live interpretation</p>
-              <h3>{draft?.product.brand ?? "Waiting"} {draft?.product.model ?? "for your brief"}</h3>
-            </div>
-            <span className={`review-state ${confirmedRequest ? "active" : interpretation?.canConfirm ? "ready" : "draft"}`}>
-              {confirmedRequest ? "Active" : interpretation?.canConfirm ? "Ready" : "Draft"}
-            </span>
-          </div>
-
-          {draft ? (
-            <dl className="brief-facts">
-              <div><dt>Size</dt><dd>{draft.requirements.size ?? "Unknown"}</dd></div>
-              <div><dt>Condition</dt><dd>{draft.requirements.condition ?? "Unknown"}</dd></div>
-              <div><dt>Destination</dt><dd>{draft.requirements.destinationCountry ?? "Unknown"}</dd></div>
-              <div><dt>Delivered cap</dt><dd>{budget ? formatMoney(budget.currency, budget.minorUnits) : "Unknown"}</dd></div>
-              <div><dt>Seller channel</dt><dd>{draft.requirements.allowResellers === false ? "No resellers" : draft.requirements.allowResellers ? "Resellers allowed" : "Unknown"}</dd></div>
-              <div><dt>Notification</dt><dd>{draft.notificationPolicy.mode === "ONCE" ? "Once" : "Meaningful improvement"}</dd></div>
-            </dl>
-          ) : (
-            <p className="review-empty">Structured hard requirements will appear here as the conversation develops.</p>
-          )}
-
-          {interpretation?.interpretation.ambiguities.length ? (
-            <div className="clarifications">
-              <strong>Needs clarification</strong>
-              <ul>
-                {interpretation.interpretation.ambiguities.map((item) => (
-                  <li key={`${item.code}-${item.fieldPath}`}>{item.clarificationQuestion}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          {interpretation?.interpretation.mandateIntent.requested ? (
-            <p className="mandate-warning">
-              Auto-buy intent detected. Confirmation here activates monitoring only; a separate purchase mandate is still required.
-            </p>
-          ) : null}
-
-          {interpretation ? (
-            <details className="interpretation-details">
-              <summary>Interpretation details</summary>
-              <dl>
-                <div><dt>Source</dt><dd>{interpretation.interpretation.provenance.kind}</dd></div>
-                <div><dt>Adapter</dt><dd>{interpretation.interpretation.provenance.source}</dd></div>
-                <div><dt>Model</dt><dd>{interpretation.interpretation.provenance.model ?? "Deterministic"}</dd></div>
-                <div><dt>Schema</dt><dd>{interpretation.interpretation.provenance.outputSchemaVersion ?? "Not specified"}</dd></div>
-              </dl>
-            </details>
-          ) : null}
-
-          <button
-            className="confirm-brief"
-            type="button"
-            onClick={confirmRequest}
-            disabled={!interpretation?.canConfirm || pending !== null || confirmedRequest !== null}
-          >
-            {pending === "confirm" ? "Confirming…" : confirmedRequest ? "Request confirmed" : "Confirm hard requirements"}
-          </button>
-          <p className="connector-note">
-            {confirmedRequest ? "Monitoring active for the confirmed request." : "Merchant monitoring starts only after explicit confirmation."}
-          </p>
-        </aside>
-      </div>
-    </section>
+      <form className="chat-composer" onSubmit={sendMessage}>
+        <label className="sr-only" htmlFor="shopping-message">Message the shopping assistant</label>
+        <textarea
+          id="shopping-message"
+          maxLength={2_000}
+          onChange={(event) => setInput(event.target.value)}
+          placeholder="Describe what you want to buy…"
+          rows={1}
+          value={input}
+        />
+        <button className="send-button" type="submit" disabled={!input.trim() || pending !== null} aria-label="Send message">
+          {pending === "interpret" ? <span className="send-loader" /> : <span aria-hidden="true">↑</span>}
+        </button>
+      </form>
+      {error ? <p className="chat-error" role="alert">{error}</p> : null}
+    </main>
   );
 }
