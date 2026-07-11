@@ -418,7 +418,6 @@ dt { color: var(--muted); } dd { margin: 0; font-weight: 700; text-align: right;
 .chat-page .monitor-message { width: min(100%, 620px); max-width: 100%; }
 .monitor-update { overflow: hidden; padding: 19px; border: 1px solid rgba(255,255,255,.9); border-radius: 7px 20px 20px 20px; background: linear-gradient(145deg, rgba(255,255,255,.82), rgba(239,247,255,.62)); box-shadow: inset 0 1px 0 white, 0 16px 42px rgba(48,95,153,.11); backdrop-filter: blur(22px) saturate(155%); }
 .monitor-update.alert, .monitor-update.buy_simulated { border-top: 4px solid var(--blue); }
-.monitor-update.reject { border-top: 4px solid var(--red); }
 .monitor-update-heading { display: flex; justify-content: space-between; gap: 16px; align-items: start; }
 .monitor-update-heading small { color: var(--muted); font-weight: 800; }
 .monitor-update-heading h2 { margin: 5px 0 0; font-size: 1.15rem; line-height: 1.3; }
@@ -432,7 +431,6 @@ dt { color: var(--muted); } dd { margin: 0; font-weight: 700; text-align: right;
 .monitor-product-link { display: inline-block; margin-top: 16px; border-radius: 10px; padding: 10px 14px; background: var(--blue); color: white; font-size: .82rem; font-weight: 850; text-decoration: none; }
 .monitor-product-link:hover { background: #1059c4; }
 .monitor-product-actions .monitor-product-link { margin-top: 0; }
-.monitor-rejection { margin: 15px 0 0; color: #7e251f; font-size: .82rem; line-height: 1.45; }
 
 @media (max-width: 900px) {
   .reaction-grid { grid-template-columns: 1fr 1fr; }

@@ -39,6 +39,8 @@ type ConfirmationResponse = InterpretationResponse & {
   monitoring: "ACTIVE" | "DEFERRED";
 };
 
+type MatchingDecision = DecisionRecord & { outcome: "ALERT" | "BUY_SIMULATED" };
+
 const MAX_COMPOSER_HEIGHT = 130;
 
 const initialMessages: ChatMessage[] = [{
@@ -47,18 +49,22 @@ const initialMessages: ChatMessage[] = [{
   content: "Tell me what you want to buy. I’ll separate hard requirements from preferences and flag anything that needs clarification.",
 }];
 
-function reactionTitle(decision: DecisionRecord): string {
-  switch (decision.outcome) {
-    case "ALERT": return "I found a deal that matches your requirements";
-    case "BUY_SIMULATED": return "Your matching deal was purchased in the simulator";
-    case "REJECT": return "This offer did not qualify, so I kept monitoring";
-    case "ESCALATE": return "I need more information before acting on this offer";
-    case "IGNORE": return "I checked this update and kept monitoring";
-  }
+function reactionTitle(decision: MatchingDecision): string {
+  return decision.outcome === "ALERT"
+    ? "I found a deal that matches your requirements"
+    : "Your matching deal was purchased in the simulator";
 }
 
-function readableReason(reason: string): string {
-  return reason.replaceAll("_", " ").toLowerCase().replace(/^./, (letter) => letter.toUpperCase());
+function isMatchingDecision(decision: DecisionRecord): decision is MatchingDecision {
+  return decision.outcome === "ALERT" || decision.outcome === "BUY_SIMULATED";
+}
+
+function latestMatchingDecision(decisions: readonly DecisionRecord[]): MatchingDecision | null {
+  for (let index = decisions.length - 1; index >= 0; index -= 1) {
+    const decision = decisions[index];
+    if (decision && isMatchingDecision(decision)) return decision;
+  }
+  return null;
 }
 
 function monitorsSameProduct(chatRequest: ShoppingRequest, simulationRequest: ShoppingRequest): boolean {
@@ -310,12 +316,15 @@ export function ShoppingChat({ initialChatId = null }: { initialChatId?: string 
     && monitorsSameProduct(confirmedRequest, monitoringState.request)
     ? monitoringState
     : null;
+  const matchingDecision = chatMonitoringState
+    ? latestMatchingDecision(chatMonitoringState.decisions)
+    : null;
   const needsColor = interpretation?.interpretation.ambiguities.some((item) => item.code === "MISSING_COLOR") ?? false;
   const selectedColor = draft?.preferences.find((preference) => /^Color:/i.test(preference))?.replace(/^Color:\s*/i, "");
 
   useEffect(() => {
     conversationEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [interpretation, messages, chatMonitoringState?.currentDecision?.id, pending]);
+  }, [interpretation, messages, matchingDecision?.id, pending]);
 
   useLayoutEffect(() => {
     const textarea = messageInputRef.current;
@@ -423,62 +432,56 @@ export function ShoppingChat({ initialChatId = null }: { initialChatId?: string 
           {confirmedRequest && draft?.product.brand === "Nike" && draft.product.model === "Dunk Low" ? (
             <BirthdayOpportunity requestId={confirmedRequest.id} />
           ) : null}
-          {chatMonitoringState && !chatMonitoringState.currentDecision ? (
+          {chatMonitoringState && !matchingDecision ? (
             <div className="chat-message assistant monitoring-waiting">
               <span>Assistant</span>
               <p>Monitoring is active. I’ll show you a product here when its delivered price and every requirement match your brief.</p>
             </div>
           ) : null}
-          {chatMonitoringState?.currentDecision ? (
+          {matchingDecision ? (
             <div className="chat-message assistant monitor-message">
               <span>Product recommendation</span>
-              <div className={`monitor-update ${chatMonitoringState.currentDecision.outcome.toLowerCase()}`}>
+              <div className={`monitor-update ${matchingDecision.outcome.toLowerCase()}`}>
                 <div className="monitor-update-heading">
                   <div>
-                    <small>{chatMonitoringState.currentDecision.outcome === "ALERT" || chatMonitoringState.currentDecision.outcome === "BUY_SIMULATED" ? "Recommended product" : "Offer checked"}</small>
-                    <h2>{reactionTitle(chatMonitoringState.currentDecision)}</h2>
+                    <small>Recommended product</small>
+                    <h2>{reactionTitle(matchingDecision)}</h2>
                   </div>
-                  <span>{chatMonitoringState.currentDecision.outcome === "ALERT" ? "MATCH" : chatMonitoringState.currentDecision.outcome.replaceAll("_", " ")}</span>
+                  <span>{matchingDecision.outcome === "ALERT" ? "MATCH" : matchingDecision.outcome.replaceAll("_", " ")}</span>
                 </div>
-                <p className="monitor-offer">{chatMonitoringState.currentDecision.offer.title}</p>
+                <p className="monitor-offer">{matchingDecision.offer.title}</p>
                 <dl>
-                  <div><dt>Seller</dt><dd>{merchantName(chatMonitoringState.currentDecision.offer.merchantId)}</dd></div>
-                  <div><dt>Variant</dt><dd>{chatMonitoringState.currentDecision.offer.attributes.size ?? "Standard"}</dd></div>
-                  <div><dt>Condition</dt><dd>{chatMonitoringState.currentDecision.offer.attributes.condition ?? "Not stated"}</dd></div>
-                  {chatMonitoringState.currentDecision.landedCost ? (
+                  <div><dt>Seller</dt><dd>{merchantName(matchingDecision.offer.merchantId)}</dd></div>
+                  <div><dt>Variant</dt><dd>{matchingDecision.offer.attributes.size ?? "Standard"}</dd></div>
+                  <div><dt>Condition</dt><dd>{matchingDecision.offer.attributes.condition ?? "Not stated"}</dd></div>
+                  {matchingDecision.landedCost ? (
                     <div>
                       <dt>Total delivered</dt>
                       <dd>{formatMoney(
-                        chatMonitoringState.currentDecision.landedCost.total.currency,
-                        chatMonitoringState.currentDecision.landedCost.total.minorUnits,
+                        matchingDecision.landedCost.total.currency,
+                        matchingDecision.landedCost.total.minorUnits,
                       )}</dd>
                     </div>
                   ) : null}
                 </dl>
-                {(chatMonitoringState.currentDecision.outcome === "ALERT" || chatMonitoringState.currentDecision.outcome === "BUY_SIMULATED") ? (
-                  <>
-                    <h3 className="monitor-why-title">Why this product</h3>
-                    <ul className="monitor-reasons">
-                      {recommendationReasons(chatMonitoringState.currentDecision)
-                        .slice(0, 4)
-                        .map((reason) => <li key={reason}>✓ {reason}</li>)}
-                    </ul>
-                    <div className="monitor-product-actions">
-                      {selectedProfile ? (
-                        <a
-                          className="monitor-product-link"
-                          href={selectedProfile.productUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {selectedProfile.productLinkLabel} ↗
-                        </a>
-                      ) : null}
-                    </div>
-                  </>
-                ) : (
-                  <p className="monitor-rejection">{chatMonitoringState.currentDecision.requirements.find((requirement) => requirement.result === "FAIL")?.explanation ?? readableReason(chatMonitoringState.currentDecision.primaryReason)}</p>
-                )}
+                <h3 className="monitor-why-title">Why this product</h3>
+                <ul className="monitor-reasons">
+                  {recommendationReasons(matchingDecision)
+                    .slice(0, 4)
+                    .map((reason) => <li key={reason}>✓ {reason}</li>)}
+                </ul>
+                <div className="monitor-product-actions">
+                  {selectedProfile ? (
+                    <a
+                      className="monitor-product-link"
+                      href={selectedProfile.productUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {selectedProfile.productLinkLabel} ↗
+                    </a>
+                  ) : null}
+                </div>
               </div>
             </div>
           ) : null}
