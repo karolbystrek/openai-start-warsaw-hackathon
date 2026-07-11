@@ -230,6 +230,25 @@ x snapshotted FX conversion(s)
 
 The exact ordering of coupons, tax, duty, delivery, and FX must be encoded per scenario/rule, not assumed globally.
 
+### Conditional delivery options and lowest delivered-price selection
+
+Do not model shipping as one unconditional number on an offer. A merchant may expose several fulfillment paths, and each path may have different eligibility and price rules. Represent every quoted path as a structured `DeliveryOption` containing:
+
+- method and identifier, such as standard courier, express, parcel locker, pickup, or merchant-specific service;
+- quoted price and currency, or a versioned free-delivery rule;
+- threshold amount and its basis, including whether eligibility is calculated before or after discounts;
+- destination, postcode, product, seller, category, weight, and channel eligibility;
+- required membership, subscription, coupon, or user entitlement;
+- coupon-stacking and category exclusions;
+- estimated delivery window and compatibility with the user's hard deadline;
+- observation time, expiry/freshness, source, and provenance.
+
+For every otherwise valid offer, deterministically enumerate the feasible `offer x delivery option x applicable coupon set` paths, including the path with no coupon. Validate each path's destination, threshold, entitlement, exclusions, stacking, deadline, and evidence freshness, then calculate its complete landed cost. Select the lowest landed cost across all valid paths and all merchants. A path with any unknown purchase-critical delivery fact must be escalated rather than treated as free.
+
+Use deterministic tie-breakers when two paths have the same landed cost: earlier delivery, fresher evidence, more trusted seller, the user's preferred delivery method, and finally a stable path identifier. Persist the winning option and rejected alternatives with reason codes so the receipt can explain why a lower sticker price or an apparently free-delivery offer lost.
+
+The optimizer must not add an unwanted item or increase quantity merely to cross a free-shipping threshold. Cart padding is forbidden by default and would require separate explicit consent, an allowed-item scope, and its own cap. A membership price of zero is eligible only when the user's current entitlement is confirmed. Immediately before simulated purchase, reload the selected delivery quote and recalculate all feasible paths because its price, threshold, or availability may have changed.
+
 Define and test:
 
 - rounding mode and the stage at which rounding occurs;
@@ -238,6 +257,7 @@ Define and test:
 - duty threshold and basis;
 - FX rate source, timestamp, spread, and freshness;
 - coupon stacking and exclusions;
+- conditional delivery options, free-shipping thresholds, membership eligibility, pickup/locker constraints, and delivery-quote freshness;
 - destination-dependent delivery and import fees;
 - equality at the hard cap: `landedCost <= cap` passes;
 - conservative handling when a fee cannot be known exactly.
@@ -407,6 +427,7 @@ Report scheduled-recheck accuracy and **harmful-wait rate**: recommendations tha
 - [ ] Implement versioned FX conversion with rate timestamps and freshness rules.
 - [ ] Implement coupon validation, applicability, exclusions, and stacking rules.
 - [ ] Implement the scoped delivery, tax, duty, and handling-fee calculation.
+- [ ] Implement deterministic eligibility and lowest-landed-cost selection across `offer x delivery option x applicable coupon set`, including the no-coupon path and a default prohibition on cart padding.
 - [ ] Implement hard-requirement evaluation with `PASS`, `FAIL`, and `UNKNOWN` results.
 - [ ] Implement the decision outcomes, precedence rules, and stable reason codes.
 - [ ] Implement the structured, immutable decision record.
@@ -444,6 +465,7 @@ Report scheduled-recheck accuracy and **harmful-wait rate**: recommendations tha
 - [ ] Add fake reference-price and invalid-coupon scenarios.
 - [ ] Add unavailable-stock, low-stock, and stale-evidence scenarios.
 - [ ] Add FX, delivery, duty, and landed-cost boundary scenarios.
+- [ ] Add conditional-delivery scenarios covering free-shipping thresholds, before/after-discount threshold bases, membership-only shipping, courier versus locker/pickup, expired quotes, and a coupon that makes the final delivered price worse.
 - [ ] Add seller-legitimacy and marketplace/reseller scenarios.
 - [ ] Implement notification fingerprints and meaningful-improvement deduplication.
 - [ ] Ensure runtime evaluation cannot access scenario ground-truth labels.
@@ -512,6 +534,7 @@ tests/evals/
 Checklist:
 
 - [ ] Implement money, rounding, FX, delivery, tax, duty, fees, and coupon rules.
+- [ ] Own `DeliveryOption` eligibility and the deterministic global selection of the lowest valid landed-cost path across merchants, delivery methods, and applicable coupon sets; never satisfy a threshold by adding unauthorized items.
 - [ ] Implement product-requirement, seller, stock, discount, evidence-freshness, and landed-cost checks.
 - [ ] Implement deterministic decision precedence for `IGNORE`, `REJECT`, `ESCALATE`, `ALERT`, and `BUY_SIMULATED` eligibility.
 - [ ] Implement mandate scope validation and the pure pre-purchase authorization function.
@@ -521,7 +544,7 @@ Checklist:
 - [ ] Publish pure test fixtures and service functions that Persons B and C can consume.
 - [ ] **Track verification:** Domain tests prove that above-cap, hard-mismatch, unavailable, stale-critical, and `UNKNOWN` purchase-critical offers never become purchase-eligible.
 
-Person A can begin immediately after the shared contract checkpoint using handcrafted offer and evidence fixtures.
+Person A can begin immediately after the shared contract checkpoint using handcrafted offer and evidence fixtures. Person A is the primary owner of delivery-option optimization because it is authoritative pricing and policy logic. Person B supplies structured merchant delivery quotes, eligibility evidence, and adversarial fixtures through the shared contracts; Person C only orchestrates the service and renders its persisted winning path and rejected alternatives.
 
 ### Person B — Intelligence, catalog, and simulator
 
