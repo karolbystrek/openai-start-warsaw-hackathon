@@ -20,10 +20,12 @@ h1 { margin: 8px 0; font-size: clamp(2.4rem, 6vw, 5rem); line-height: .95; lette
 .lede { max-width: 620px; margin: 0; color: var(--muted); font-size: 1.1rem; }
 .clock { min-width: 250px; border-left: 2px solid var(--ink); padding-left: 18px; display: grid; gap: 5px; }
 .clock span, .clock small { color: var(--muted); }
-.controls { display: flex; gap: 10px; padding: 18px 0 24px; border-top: 1px solid var(--line); }
+.control-area { padding: 18px 0 24px; border-top: 1px solid var(--line); }
+.controls { display: flex; gap: 10px; }
 .controls button { border: 1px solid var(--ink); background: var(--ink); color: white; padding: 11px 18px; border-radius: 999px; cursor: pointer; }
 .controls button.secondary { background: transparent; color: var(--ink); }
 .controls button:disabled { opacity: .45; cursor: not-allowed; }
+.control-error { width: fit-content; margin: 12px 0 0; padding: 9px 12px; border-left: 3px solid var(--red); background: #fce9e5; color: #7e251f; font-size: .9rem; }
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 24px; box-shadow: 0 8px 30px rgba(23, 35, 30, .04); }
 .card h2 { margin: 8px 0 16px; font-size: 1.5rem; }
@@ -34,7 +36,8 @@ dt { color: var(--muted); } dd { margin: 0; font-weight: 700; text-align: right;
 .empty { min-height: 65px; display: grid; place-items: center; color: var(--muted); text-align: center; }
 .decision-card.reject { border-top: 4px solid var(--red); } .decision-card.alert { border-top: 4px solid var(--green); }
 .reason { font-family: monospace; color: var(--muted); }
-.stub-badge { display: inline-block; border: 1px solid #e2a957; background: #fff3d8; padding: 5px 8px; border-radius: 6px; font-size: .7rem; font-weight: 800; }
+.provenance-badge { display: inline-block; border: 1px solid var(--line); background: #edf3ef; padding: 5px 8px; border-radius: 6px; font-size: .7rem; font-weight: 800; }
+.provenance-badge.stub { border-color: #e2a957; background: #fff3d8; }
 .checks, .cost-lines { padding: 0; margin: 18px 0 0; list-style: none; }
 .checks li, .cost-lines li { display: flex; gap: 10px; justify-content: space-between; padding: 8px 0; border-top: 1px solid var(--line); }
 .checks span { min-width: 70px; font-size: .7rem; font-weight: 900; } .checks .pass { color: var(--green); } .checks .fail { color: var(--red); }

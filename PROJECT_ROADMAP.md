@@ -64,6 +64,14 @@ The opportunity comparison should account for:
 
 An opportunity recommendation must always include a reason, a scheduled recheck time, the triggering event or deadline, and the conditions that would cancel waiting. It remains separate from the authoritative core decision and must never reserve inventory, spend money, delay a mandated purchase, or silently weaken a hard constraint.
 
+## Additional feature — Voice brief intake
+
+This is an optional, removable input track, not a replacement for the existing text brief and not a prerequisite for the main demo. It only changes how a shopping request is collected, never how it is decided.
+
+Instead of typing the brief, the user has a spoken conversation with the assistant. The agent asks about missing or ambiguous hard constraints and preferences, reads back a summary of its interpretation, and proposes a draft request and, if relevant, a draft mandate. The user must still confirm activation in the interface itself — a spoken "yes" collects the draft, but only an explicit, non-voice confirmation in the UI can move a request to `ACTIVE` or make a mandate effective, exactly as with a typed brief today.
+
+If this feature is disabled, the user journey described above is unaffected: the user types the brief and confirms it in the interface as it already works.
+
 ## Delivery roadmap
 
 ### Phase 1 — Define trusted behavior
