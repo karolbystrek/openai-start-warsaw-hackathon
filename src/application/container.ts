@@ -14,7 +14,7 @@ import { headlineEvents, headlineRequest } from "@/simulator/scenarios/headline"
 function createCheckpointApplication(): CheckpointApplication {
   const { db } = createDatabase();
   return new CheckpointApplication({
-    request: headlineRequest,
+    initialRequest: headlineRequest,
     runId: "headline-run",
     simulator: new FixtureSimulator(headlineEvents, headlineRequest.effectiveAt),
     repository: new DrizzleCheckpointRepository(db),

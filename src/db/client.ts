@@ -12,6 +12,7 @@ export function createDatabase(databasePath = process.env.DATABASE_URL ?? "./dat
   const resolvedPath = databasePath === ":memory:" ? databasePath : resolve(databasePath);
   if (resolvedPath !== ":memory:") mkdirSync(dirname(resolvedPath), { recursive: true });
   const sqlite = new Database(resolvedPath);
+  sqlite.pragma("busy_timeout = 5000");
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("foreign_keys = ON");
   const db = drizzle(sqlite, { schema });

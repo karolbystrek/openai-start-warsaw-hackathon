@@ -1,9 +1,9 @@
 import { checkpointApplication } from "@/application/container";
+import { formatMoney } from "@/app/format-money";
+import { ShoppingChat } from "@/app/shopping-chat";
 import { SimulatorControls } from "@/app/simulator-controls";
 
 export const dynamic = "force-dynamic";
-
-const formatMoney = (currency: string, minorUnits: number) => `${currency} ${(minorUnits / 100).toFixed(2)}`;
 
 export default async function Home() {
   const state = await checkpointApplication.getSimulationState();
@@ -24,6 +24,8 @@ export default async function Home() {
           <small>{state.simulator.status}</small>
         </div>
       </header>
+
+      <ShoppingChat />
 
       <SimulatorControls
         complete={state.simulator.status === "COMPLETE"}

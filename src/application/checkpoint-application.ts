@@ -12,7 +12,7 @@ import type {
 } from "@/domain/services";
 
 export interface CheckpointApplicationDependencies {
-  request: ShoppingRequest;
+  initialRequest: ShoppingRequest;
   runId: string;
   simulator: SimulatorControl;
   repository: EvaluationRepository;
@@ -44,10 +44,15 @@ export class CheckpointApplication {
   }
 
   async getSimulationState(): Promise<SimulationState> {
-    const { request, runId, simulator, repository, receipts } = this.dependencies;
+    const { runId, simulator, repository, receipts } = this.dependencies;
+    const request = await this.loadCurrentRequest();
     const processedEvents = [...await repository.listEvents(runId)];
     recoverSimulator(simulator, processedEvents);
-    const decisions = [...await repository.listDecisions(request.id)];
+    const decisions = [...await repository.listDecisionsForRun({
+      requestId: request.id,
+      requestVersion: request.version,
+      runId,
+    })];
     const currentDecision = decisions.at(-1) ?? null;
     return SimulationStateSchema.parse({
       request,
@@ -67,16 +72,21 @@ export class CheckpointApplication {
   }
 
   private async stepSimulationOnce(expectedSequence: number): Promise<SimulationState> {
-    const { request, runId, simulator, repository, matching, verification, pricing, policy } = this.dependencies;
-    await repository.saveRequest(request);
+    const { runId, simulator, repository, matching, verification, pricing, policy } = this.dependencies;
+    await this.loadCurrentRequest();
     recoverSimulator(simulator, await repository.listEvents(runId));
     if (simulator.getState().nextSequence !== expectedSequence) return this.getSimulationState();
     const event = simulator.step();
     if (!event) return this.getSimulationState();
+    const request = await this.loadCurrentRequest(event.occurredAt);
 
     try {
       if (event.type === "OFFER_OBSERVED") {
-        const previousDecisions = await repository.listDecisions(request.id);
+        const previousDecisions = await repository.listDecisionsForRun({
+          requestId: request.id,
+          requestVersion: request.version,
+          runId,
+        });
         const match = await matching.assess(request, event.offer);
         const evidence = await verification.verify(request, event.offer, event.evidence);
         const landedCost = await pricing.calculate(request, event.offer, evidence);
@@ -89,9 +99,22 @@ export class CheckpointApplication {
           landedCost,
           previousDecisions,
         });
-        await repository.saveEvaluation(event, decision);
+        const committed = await repository.saveEvaluation(
+          request,
+          event,
+          decision,
+          expectedSequence,
+        );
+        if (!committed) {
+          simulator.reset();
+          recoverSimulator(simulator, await repository.listEvents(runId));
+        }
       } else {
-        await repository.saveEvent(event);
+        const committed = await repository.saveEventIfCurrent(event, expectedSequence);
+        if (!committed) {
+          simulator.reset();
+          recoverSimulator(simulator, await repository.listEvents(runId));
+        }
       }
     } catch (error) {
       simulator.reset();
@@ -107,10 +130,19 @@ export class CheckpointApplication {
   }
 
   private async resetSimulationOnce(): Promise<SimulationState> {
-    const { request, simulator, repository } = this.dependencies;
+    const { initialRequest, simulator, repository } = this.dependencies;
     simulator.reset();
-    await repository.reset();
-    await repository.saveRequest(request);
+    await repository.resetToRequest(initialRequest);
     return this.getSimulationState();
+  }
+
+  private async loadCurrentRequest(effectiveAt?: string): Promise<ShoppingRequest> {
+    const { initialRequest, repository } = this.dependencies;
+    const current = await repository.getCurrentRequest(initialRequest.id, effectiveAt);
+    if (current) return current;
+    await repository.saveRequest(initialRequest);
+    const seeded = await repository.getCurrentRequest(initialRequest.id, effectiveAt);
+    if (!seeded) throw new Error(`Could not load request ${initialRequest.id}.`);
+    return seeded;
   }
 }

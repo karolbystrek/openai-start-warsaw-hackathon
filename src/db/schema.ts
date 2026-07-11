@@ -42,11 +42,19 @@ export const decisionRecords = sqliteTable("decision_records", {
   requestId: text("request_id").notNull(),
   requestVersion: integer("request_version").notNull(),
   eventId: text("event_id").notNull(),
+  policyVersion: text("policy_version").notNull().default("legacy-policy-v0"),
   outcome: text("outcome").notNull(),
   decidedAt: text("decided_at").notNull(),
   payload: text("payload").notNull(),
   ...timestamps,
-}, (table) => [uniqueIndex("decision_records_event_idx").on(table.eventId)]);
+}, (table) => [
+  uniqueIndex("decision_records_evaluation_idx").on(
+    table.requestId,
+    table.requestVersion,
+    table.eventId,
+    table.policyVersion,
+  ),
+]);
 
 export const simulatedOrders = sqliteTable("simulated_orders", {
   id: text("id").primaryKey(),
