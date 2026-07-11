@@ -2,6 +2,10 @@
 
 This repository implements the AI Shopping Assistant described in the [full Solidgate case brief](SOLIDGATE_CASE.md).
 
+## Project roadmap
+
+See [PROJECT_ROADMAP.md](PROJECT_ROADMAP.md) for the product vision, guiding principles, target user journey, delivery phases, evaluation priorities, and final demo narrative.
+
 ## Product goal
 
 Build a deal-hunting agent that accepts a plain-language shopping brief, monitors simulated merchant offers, and acts only when the **true delivered price** and all user conditions are satisfied.
