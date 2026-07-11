@@ -6,6 +6,10 @@ This repository implements the AI Shopping Assistant described in the [full Soli
 
 See [PROJECT_ROADMAP.md](PROJECT_ROADMAP.md) for the product vision, guiding principles, target user journey, delivery phases, evaluation priorities, and final demo narrative.
 
+## Implementation plan
+
+See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the recommended architecture and technology stack, domain contracts, deterministic evaluation pipeline, landed-cost and matching designs, simulator and evaluation strategy, risks, and the phased implementation checklist. Use its checkboxes to track delivery, and check an item only after its work and stated verification are complete.
+
 ## Product goal
 
 Build a deal-hunting agent that accepts a plain-language shopping brief, monitors simulated merchant offers, and acts only when the **true delivered price** and all user conditions are satisfied.
