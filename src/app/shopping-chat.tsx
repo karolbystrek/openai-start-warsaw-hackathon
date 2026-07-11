@@ -2,19 +2,30 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 import { formatMoney } from "@/app/format-money";
 import type {
   ShoppingBriefInterpretation,
   ShoppingRequest,
 } from "@/domain/contracts";
-import { presentationProducts } from "@/domain/catalog/presentation-products";
+import { presentationProducts, presentationProductByIdentifier } from "@/domain/catalog/presentation-products";
+
+type ChatImage = { src: string; alt: string; width: number; height: number };
 
 type ChatMessage = {
   id: string;
   role: "assistant" | "user";
   content: string;
+  image?: ChatImage;
 };
+
+function resolvedProductImage(result: InterpretationResponse): ChatImage | null {
+  const identifierValue = result.interpretation.requestDraft.product.identifiers[0]?.value;
+  if (!identifierValue) return null;
+  const profile = presentationProductByIdentifier.get(identifierValue);
+  return profile ? { ...profile.image } : null;
+}
 
 type InterpretationResponse = {
   interpretation: ShoppingBriefInterpretation;
@@ -144,11 +155,12 @@ export function ShoppingChat({ voiceEnabled }: ShoppingChatProps) {
     }
   };
 
-  const appendAssistantMessage = (content: string) => {
+  const appendAssistantMessage = (content: string, image?: ChatImage) => {
     const message: ChatMessage = {
       id: `assistant-${crypto.randomUUID()}`,
       role: "assistant",
       content,
+      ...(image ? { image } : {}),
     };
     setMessages((current) => [...current, message]);
     if (autoSpeak && voiceEnabled) void speakMessage(message);
@@ -257,7 +269,7 @@ export function ShoppingChat({ voiceEnabled }: ShoppingChatProps) {
       });
       const result = await readResponse<InterpretationResponse>(response);
       setInterpretation(result);
-      appendAssistantMessage(assistantSummary(result));
+      appendAssistantMessage(assistantSummary(result), resolvedProductImage(result) ?? undefined);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not interpret the brief.");
     } finally {
@@ -282,7 +294,10 @@ export function ShoppingChat({ voiceEnabled }: ShoppingChatProps) {
         return;
       }
       setConfirmedRequest(result.request);
-      appendAssistantMessage("Request confirmed. The matching presentation scenario is active and ready for its first merchant event.");
+      appendAssistantMessage(
+        "Request confirmed. The matching presentation scenario is active and ready for its first merchant event.",
+        resolvedProductImage(result) ?? undefined,
+      );
       router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not confirm the brief.");
@@ -304,6 +319,8 @@ export function ShoppingChat({ voiceEnabled }: ShoppingChatProps) {
 
   const draft = interpretation?.interpretation.requestDraft;
   const budget = draft?.requirements.maximumLandedCost;
+  const draftIdentifier = draft?.product.identifiers[0]?.value;
+  const resolvedProfile = draftIdentifier ? presentationProductByIdentifier.get(draftIdentifier) : null;
 
   return (
     <section className="chat-section" aria-labelledby="chat-title">
@@ -335,6 +352,15 @@ export function ShoppingChat({ voiceEnabled }: ShoppingChatProps) {
                   ) : null}
                 </div>
                 <p>{message.content}</p>
+                {message.image ? (
+                  <Image
+                    className="chat-message-image"
+                    src={message.image.src}
+                    alt={message.image.alt}
+                    width={message.image.width}
+                    height={message.image.height}
+                  />
+                ) : null}
               </div>
             ))}
             {pending === "interpret" ? (
@@ -364,6 +390,9 @@ export function ShoppingChat({ voiceEnabled }: ShoppingChatProps) {
                   onClick={() => setInput(profile.brief)}
                   disabled={pending !== null || recording || transcribing}
                 >
+                  <span className="demo-brief-thumb" aria-hidden="true">
+                    <Image src={profile.image.src} alt="" fill sizes="22px" />
+                  </span>
                   {profile.label}
                 </button>
               ))}
@@ -421,7 +450,12 @@ export function ShoppingChat({ voiceEnabled }: ShoppingChatProps) {
 
         <aside className="brief-review" aria-label="Interpreted shopping brief">
           <div className="review-header">
-            <div>
+            {resolvedProfile ? (
+              <span className="review-product-image">
+                <Image src={resolvedProfile.image.src} alt={resolvedProfile.image.alt} fill sizes="56px" />
+              </span>
+            ) : null}
+            <div className="review-heading">
               <p className="card-label">Live interpretation</p>
               <h3>{draft?.product.brand ?? "Waiting"} {draft?.product.model ?? "for your brief"}</h3>
             </div>
