@@ -311,6 +311,19 @@ dt { color: var(--muted); } dd { margin: 0; font-weight: 700; text-align: right;
 .chat-brief dt, .chat-brief dd { font-size: .86rem; }
 .chat-questions { margin: 14px 0 0; padding: 13px 14px 13px 30px; border: 1px solid rgba(84, 151, 235, .14); border-radius: 12px; background: rgba(231, 242, 255, .66); color: #315d93; font-size: .84rem; line-height: 1.45; }
 .chat-questions li + li { margin-top: 6px; }
+.color-picker { margin-top: 14px; padding: 13px; border: 1px solid rgba(84, 151, 235, .18); border-radius: 14px; background: rgba(255, 255, 255, .52); }
+.color-picker > span { display: block; margin-bottom: 9px; color: #315d93; font-size: .78rem; font-weight: 850; }
+.color-picker > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.color-picker button { display: inline-flex; align-items: center; gap: 7px; border: 1px solid rgba(65, 115, 178, .2); border-radius: 999px; padding: 7px 10px; background: rgba(255, 255, 255, .82); color: #294c76; cursor: pointer; font: inherit; font-size: .76rem; font-weight: 800; }
+.color-picker button:hover { border-color: #398cf4; box-shadow: 0 5px 14px rgba(35, 102, 190, .12); }
+.color-picker button:disabled { opacity: .45; cursor: not-allowed; }
+.color-swatch { width: 16px; height: 16px; flex: none; border: 1px solid rgba(20, 42, 70, .2); border-radius: 50%; background: #d9dee6; }
+.color-black-and-white { background: linear-gradient(135deg, #111 50%, #fff 50%); }
+.color-grey-and-white { background: linear-gradient(135deg, #9aa2ad 50%, #fff 50%); }
+.color-all-white, .color-white, .color-starlight { background: #fffdf3; }
+.color-clear { background: linear-gradient(135deg, rgba(255,255,255,.9), rgba(168,211,238,.45)); }
+.color-blue, .color-midnight { background: #183a66; }
+.color-silver { background: linear-gradient(135deg, #f7f8fa, #aeb7c2); }
 .chat-safety-note { margin: 14px 0 0; color: #637895; font-size: .8rem; line-height: 1.45; }
 .chat-page .confirm-brief { width: 100%; margin-top: 16px; border: 1px solid rgba(255, 255, 255, .4); border-radius: 12px; padding: 12px 14px; background: linear-gradient(145deg, #368eff, #1459d4); color: white; cursor: pointer; font-weight: 800; box-shadow: inset 0 1px 1px rgba(255, 255, 255, .45), 0 8px 20px rgba(25, 98, 216, .2); }
 .chat-page .confirm-brief:disabled { opacity: .48; cursor: not-allowed; box-shadow: none; }

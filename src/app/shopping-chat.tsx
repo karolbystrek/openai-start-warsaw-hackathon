@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 import { formatMoney } from "@/app/format-money";
+import { BirthdayOpportunity } from "@/app/birthday-opportunity";
 import {
   VoiceShoppingCompanion,
   type VoiceBriefReview,
@@ -76,9 +77,8 @@ export function ShoppingChat() {
 
   const summonVoice = () => window.dispatchEvent(new Event("shopping-voice-summon"));
 
-  const sendMessage = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const content = input.trim();
+  const submitContent = async (rawContent: string) => {
+    const content = rawContent.trim();
     if (!content || pending) return;
     if (/^\/(?:voice|scout)$/i.test(content)) {
       setInput("");
@@ -116,6 +116,11 @@ export function ShoppingChat() {
     } finally {
       setPending(null);
     }
+  };
+
+  const sendMessage = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    await submitContent(input);
   };
 
   const reviewVoiceBrief = useCallback(async (brief: string): Promise<VoiceBriefReview> => {
@@ -202,6 +207,11 @@ export function ShoppingChat() {
 
   const draft = interpretation?.interpretation.requestDraft;
   const budget = draft?.requirements.maximumLandedCost;
+  const selectedProfile = presentationProducts.find((profile) => (
+    profile.brand === draft?.product.brand && profile.model === draft?.product.model
+  ));
+  const needsColor = interpretation?.interpretation.ambiguities.some((item) => item.code === "MISSING_COLOR") ?? false;
+  const selectedColor = draft?.preferences.find((preference) => /^Color:/i.test(preference))?.replace(/^Color:\s*/i, "");
 
   useEffect(() => {
     if (userTurns.length === 0) return;
@@ -278,11 +288,25 @@ export function ShoppingChat() {
                 </div>
                 <dl>
                   <div><dt>Required variant</dt><dd>{draft.requirements.size ?? "Not set"}</dd></div>
+                  <div><dt>Color</dt><dd>{selectedColor ?? "Not set"}</dd></div>
                   <div><dt>Condition</dt><dd>{draft.requirements.condition ?? "Not set"}</dd></div>
                   <div><dt>Deliver to</dt><dd>{draft.requirements.destinationCountry ?? "Not set"}</dd></div>
                   <div><dt>Maximum delivered</dt><dd>{budget ? formatMoney(budget.currency, budget.minorUnits) : "Not set"}</dd></div>
                   <div><dt>Seller</dt><dd>{draft.requirements.allowResellers === false ? "No resellers" : draft.requirements.allowResellers ? "Resellers allowed" : "Not set"}</dd></div>
                 </dl>
+                {needsColor && selectedProfile ? (
+                  <div className="color-picker" aria-label="Choose product color">
+                    <span>Choose a color</span>
+                    <div>
+                      {selectedProfile.colorOptions.map((color) => (
+                        <button key={color} type="button" onClick={() => void submitContent(`Color: ${color}.`)} disabled={pending !== null}>
+                          <i className={`color-swatch color-${color.toLowerCase().replaceAll(" ", "-")}`} aria-hidden="true" />
+                          {color}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 {interpretation?.interpretation.ambiguities.length ? (
                   <ul className="chat-questions">
                     {interpretation.interpretation.ambiguities.map((item) => (
@@ -303,6 +327,9 @@ export function ShoppingChat() {
                 </button>
               </div>
             </div>
+          ) : null}
+          {confirmedRequest && draft?.product.brand === "Nike" && draft.product.model === "Dunk Low" ? (
+            <BirthdayOpportunity requestId={confirmedRequest.id} />
           ) : null}
           <div className="conversation-end" ref={conversationEndRef} />
         </div>
