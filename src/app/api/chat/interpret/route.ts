@@ -20,8 +20,8 @@ export async function POST(request: Request) {
   const saved = await chatHistoryRepository.saveInteraction({
     chatId: command.data.chatId,
     userSessionId,
-    userContent: command.data.messages.at(-1)!,
-    assistantContent: chatAssistantSummary(result),
+    userContent: command.data.displayedUserContent ?? command.data.messages.at(-1)!,
+    assistantContent: command.data.persistAssistantMessage ? chatAssistantSummary(result) : null,
     state: {
       interpretation: result,
       confirmedRequest: null,

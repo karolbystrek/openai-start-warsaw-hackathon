@@ -205,23 +205,24 @@ export function ShoppingChat({ initialChatId = null }: { initialChatId?: string 
     await submitContent(input);
   };
 
-  const reviewVoiceBrief = useCallback(async (brief: string): Promise<VoiceBriefReview> => {
+  const reviewVoiceBrief = useCallback(async (brief: string, userTranscript: string | null): Promise<VoiceBriefReview> => {
     const content = brief.trim();
     setError(null);
     setConfirmedRequest(null);
     setUserTurns([content]);
     setPending("interpret");
-    setMessages((current) => [
-      ...current.filter((message) => message.id !== "voice-brief" && message.id !== "voice-review"),
-      { id: "voice-brief", role: "user", content: `Voice brief: ${content}` },
-    ]);
 
     try {
       const activeChatId = await ensureChat();
       const response = await fetch("/api/chat/interpret", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chatId: activeChatId, messages: [content] }),
+        body: JSON.stringify({
+          chatId: activeChatId,
+          messages: [content],
+          displayedUserContent: userTranscript ?? content,
+          persistAssistantMessage: false,
+        }),
       });
       const result = await readResponse<InterpretationResponse>(response);
       const summary = chatAssistantSummary(result);
@@ -229,10 +230,6 @@ export function ShoppingChat({ initialChatId = null }: { initialChatId?: string 
         .filter((item) => item.blocking)
         .map((item) => item.clarificationQuestion);
       setInterpretation(result);
-      setMessages((current) => [
-        ...current.filter((message) => message.id !== "voice-review"),
-        { id: "voice-review", role: "assistant", content: summary },
-      ]);
       return { complete: result.canConfirm, missingQuestions, summary };
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "Could not review the spoken brief.";
@@ -242,6 +239,16 @@ export function ShoppingChat({ initialChatId = null }: { initialChatId?: string 
       setPending(null);
     }
   }, [ensureChat]);
+
+  const appendVoiceTranscript = useCallback((transcript: string) => {
+    const content = transcript.trim();
+    if (!content) return;
+    setMessages((current) => [...current, {
+      id: `voice-user-${crypto.randomUUID()}`,
+      role: "user",
+      content,
+    }]);
+  }, []);
 
   const confirmRequest = async () => {
     if (!interpretation?.canConfirm || userTurns.length === 0 || pending) return;
@@ -351,6 +358,7 @@ export function ShoppingChat({ initialChatId = null }: { initialChatId?: string 
         <VoiceShoppingCompanion
           disabled={pending !== null}
           onBriefReview={reviewVoiceBrief}
+          onUserTranscript={appendVoiceTranscript}
         />
 
         <div className="chat-messages" aria-live="polite">

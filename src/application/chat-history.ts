@@ -86,7 +86,7 @@ export class ChatHistoryRepository {
     chatId: string;
     userSessionId: string;
     userContent: string;
-    assistantContent: string;
+    assistantContent: string | null;
     state: PersistedChatState;
   }): Promise<boolean> {
     const chat = await this.getOwnedChatRow(input.chatId, input.userSessionId);
@@ -95,7 +95,13 @@ export class ChatHistoryRepository {
     this.db.transaction((tx) => {
       tx.insert(chatMessages).values([
         { id: crypto.randomUUID(), chatId: input.chatId, role: "user", content: input.userContent, createdAt: now },
-        { id: crypto.randomUUID(), chatId: input.chatId, role: "assistant", content: input.assistantContent, createdAt: now },
+        ...(input.assistantContent ? [{
+          id: crypto.randomUUID(),
+          chatId: input.chatId,
+          role: "assistant" as const,
+          content: input.assistantContent,
+          createdAt: now,
+        }] : []),
       ]).run();
       tx.update(chats).set({
         title: chat.title === "New shopping request" ? this.titleFrom(input.userContent) : chat.title,
