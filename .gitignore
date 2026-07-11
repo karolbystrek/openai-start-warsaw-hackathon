@@ -1,0 +1,9 @@
+node_modules/
+.pnpm-store/
+.next/
+*.tsbuildinfo
+.env
+.env.local
+data/*.db
+data/*.db-*
+drizzle/meta/_journal.json.tmp

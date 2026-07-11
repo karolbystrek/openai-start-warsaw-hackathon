@@ -390,15 +390,16 @@ Report scheduled-recheck accuracy and **harmful-wait rate**: recommendations tha
 
 ### Phase 0 — Decisions and skeleton
 
-- [ ] Record the agreed technology stack and deployment target.
-- [ ] Choose the headline demo product and destination.
-- [ ] Define and document the simplified tax and duty rules.
-- [ ] Define the product-match policy for alerts and automatic purchases.
-- [ ] Define mandate creation, expiry, revocation, and consumption semantics.
-- [ ] Scaffold the application with strict TypeScript settings.
+- [x] Record the agreed technology stack and deployment target.
+- [x] Choose the headline demo product and destination.
+- [x] Define and document the simplified tax and duty rules.
+- [x] Define the product-match policy for alerts and automatic purchases.
+- [x] Define mandate creation, expiry, revocation, and consumption semantics.
+- [x] Scaffold the application with strict TypeScript settings.
 - [ ] Configure shared Zod schemas, the test runner, and the database.
-- [ ] Define and validate the deterministic scenario-fixture format.
-- [ ] **Exit verification:** Load one fixture event, validate it, store it, and display it in the application.
+  - Shared Zod schemas and SQLite/Drizzle are configured. Automated test runners are intentionally excluded by repository guidance.
+- [x] Define and validate the deterministic scenario-fixture format.
+- [x] **Exit verification:** Load one fixture event, validate it, store it, and display it in the application.
 
 ### Phase 1 — Trusted domain core
 
@@ -484,11 +485,11 @@ The three tracks should communicate through frozen Zod contracts and fixtures, n
 
 Time-box this checkpoint to the beginning of the project. Agree on names and shapes before dividing into separate branches or worktrees.
 
-- [ ] Freeze the first versions of `ShoppingRequest`, `Mandate`, `OfferSnapshot`, `EvidenceBundle`, `MatchAssessment`, `LandedCost`, `DecisionRecord`, `SimulationEvent`, and `SimulatedOrder` as shared Zod schemas and inferred TypeScript types.
-- [ ] Agree on stable identifiers, timestamps, currency representation, `PASS`/`FAIL`/`UNKNOWN`, decision outcomes, and primary reason codes.
-- [ ] Create one valid headline fixture and one deliberately rejected fixture that conform to the contracts.
-- [ ] Create typed interfaces for the services each track supplies, with temporary in-memory stubs where implementation is not ready.
-- [ ] Assign Person A as the shared-contract custodian; contract changes require agreement from affected owners and must remain backward-compatible during a convergence checkpoint.
+- [x] Freeze the first versions of `ShoppingRequest`, `Mandate`, `OfferSnapshot`, `EvidenceBundle`, `MatchAssessment`, `LandedCost`, `DecisionRecord`, `SimulationEvent`, and `SimulatedOrder` as shared Zod schemas and inferred TypeScript types.
+- [x] Agree on stable identifiers, timestamps, currency representation, `PASS`/`FAIL`/`UNKNOWN`, decision outcomes, and primary reason codes.
+- [x] Create one valid headline fixture and one deliberately rejected fixture that conform to the contracts.
+- [x] Create typed interfaces for the services each track supplies, with temporary in-memory stubs where implementation is not ready.
+- [x] Assign Person A as the shared-contract custodian; contract changes require agreement from affected owners and must remain backward-compatible during a convergence checkpoint.
 - [ ] **Exit verification:** All three tracks compile against the same contracts and can run their initial tests without importing another track's private modules.
 
 ### Person A — Trust core and evaluation
@@ -567,13 +568,13 @@ tests/e2e/
 
 Checklist:
 
-- [ ] Scaffold Next.js, shared styling/components, SQLite/Drizzle, migrations, and repository adapters.
+- [x] Scaffold Next.js, shared styling/components, SQLite/Drizzle, migrations, and repository adapters.
 - [ ] Implement request creation, interpreted-brief confirmation, activation, pause, and revocation flows.
 - [ ] Implement `evaluate-offer.ts` using typed matching, verification, pricing, policy, audit, and persistence interfaces.
 - [ ] Implement serialized `recheck-and-buy.ts`, idempotent simulated-order storage, and mandate consumption.
 - [ ] Build request, simulator controls, event timeline, verification, landed-cost, decision, mandate, and receipt views.
 - [ ] Build the evaluation dashboard from Person A's metrics and Person B's ground-truth scenarios.
-- [ ] Maintain in-memory stubs for unavailable Person A or B services so UI and orchestration work can continue asynchronously.
+- [x] Maintain in-memory stubs for unavailable Person A or B services so UI and orchestration work can continue asynchronously.
 - [ ] Replace stubs with real adapters at each convergence checkpoint and add a contract test for every replacement.
 - [ ] Own the clean-state reset command, demo runbook, Playwright journey, and final rehearsal.
 - [ ] **Track verification:** The app can run the full headline journey first with stubs and then with real services, without changing UI-facing contracts.
@@ -595,10 +596,10 @@ Do not wait until all three tracks are finished. Merge or rebase frequently, but
 
 #### Checkpoint 1 — Compiling skeleton
 
-- [ ] Person B emits a fixture `ShoppingRequest`, `MatchAssessment`, and `SimulationEvent`.
-- [ ] Person A accepts fixture evidence and emits a fixture `DecisionRecord`.
-- [ ] Person C renders those records and persists them through in-memory adapters.
-- [ ] **Checkpoint verification:** One event travels from simulator-shaped input to a rendered decision without `any`, duplicate schemas, or cross-track private imports.
+- [x] Person B emits a fixture `ShoppingRequest`, `MatchAssessment`, and `SimulationEvent`.
+- [x] Person A accepts fixture evidence and emits a fixture `DecisionRecord`.
+- [x] Person C renders those records and persists them through in-memory adapters.
+- [x] **Checkpoint verification:** One event travels from simulator-shaped input to a rendered decision without `any`, duplicate schemas, or cross-track private imports.
 
 #### Checkpoint 2 — Real alert slice
 

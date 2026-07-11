@@ -2,6 +2,8 @@
 
 This repository implements the AI Shopping Assistant described in the [full Solidgate case brief](SOLIDGATE_CASE.md).
 
+Prefer implementation simplicity and clarity over unnecessary complexity.
+
 ## Project roadmap
 
 See [PROJECT_ROADMAP.md](PROJECT_ROADMAP.md) for the product vision, guiding principles, target user journey, delivery phases, evaluation priorities, and final demo narrative.
@@ -9,6 +11,18 @@ See [PROJECT_ROADMAP.md](PROJECT_ROADMAP.md) for the product vision, guiding pri
 ## Implementation plan
 
 See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the recommended architecture and technology stack, domain contracts, deterministic evaluation pipeline, landed-cost and matching designs, simulator and evaluation strategy, risks, and the phased implementation checklist. Use its checkboxes to track delivery, and check an item only after its work and stated verification are complete.
+
+## Run locally
+
+Requirements: Node.js 20+ and pnpm 11.
+
+```bash
+pnpm install
+pnpm db:reset
+pnpm dev
+```
+
+Open <http://localhost:3000>, reset the scenario, and step through the two fixture events. No environment file or OpenAI API key is required for the deterministic Checkpoint 1 runtime.
 
 ## Product goal
 
@@ -43,5 +57,10 @@ At minimum, report:
 
 - **Strike precision:** the share of alerts or purchases that are genuinely valid deals.
 - **False-buy rate:** the share of purchases that should have been rejected or escalated.
+
+## Automated tests
+
+- Do not write or add automated tests in this repository.
+- Verify changes with linting, strict type-checking, production builds, database migrations, and documented manual smoke checks.
 
 When requirements are unclear, use [SOLIDGATE_CASE.md](SOLIDGATE_CASE.md) as the source of truth.
