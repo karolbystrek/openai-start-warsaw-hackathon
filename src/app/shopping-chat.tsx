@@ -225,7 +225,6 @@ export function ShoppingChat() {
           <span>Shopping Assistant</span>
         </Link>
         <nav aria-label="Chat actions">
-          <button className="new-chat" type="button" onClick={summonVoice} disabled={pending !== null}>Call Scout</button>
           <button className="new-chat" type="button" onClick={resetChat} disabled={pending !== null}>New chat</button>
           <Link className="details-link" href="/details">Details</Link>
         </nav>
@@ -249,11 +248,6 @@ export function ShoppingChat() {
             </div>
           ) : null}
         </div>
-
-        <VoiceShoppingCompanion
-          disabled={pending !== null}
-          onBriefReview={reviewVoiceBrief}
-        />
 
         <div className="chat-messages" aria-live="polite">
           {messages.map((message) => (
@@ -308,8 +302,23 @@ export function ShoppingChat() {
         </div>
       </section>
 
+      <VoiceShoppingCompanion
+        disabled={pending !== null}
+        onBriefReview={reviewVoiceBrief}
+      />
+
       <form className="chat-composer" onSubmit={sendMessage}>
         <label className="sr-only" htmlFor="shopping-message">Message the shopping assistant</label>
+        <button
+          className="voice-mode-button"
+          type="button"
+          onClick={summonVoice}
+          disabled={pending !== null}
+          aria-label="Start Scout voice mode"
+          title="Start Scout voice mode"
+        >
+          <span className="voice-mode-face" aria-hidden="true"><i /><i /></span>
+        </button>
         <textarea
           id="shopping-message"
           maxLength={2_000}
