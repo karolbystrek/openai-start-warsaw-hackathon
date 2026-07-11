@@ -79,6 +79,7 @@ If the team is substantially stronger in Python, the viable alternative is FastA
 src/
   app/                   Next.js routes and screens
   domain/
+    contracts/           shared Zod schemas and service interfaces
     brief/               request and mandate types
     catalog/             canonical product and attribute rules
     matching/            identity and variant matching
@@ -414,16 +415,152 @@ The most important test oracle is scenario ground truth, not another model's opi
 - [ ] Rehearse the final narrative within the available presentation time.
 - [ ] **Exit verification:** Run the complete request-to-rejection-to-alert-or-purchase narrative deterministically in a few minutes from a clean checkout.
 
-## 13. Suggested work split
+## 13. Three-person asynchronous work split
 
-For a four-person team:
+The three tracks should communicate through frozen Zod contracts and fixtures, not by importing one another's unfinished implementation. Each person can build and test against stubs, while Person C continuously integrates completed slices into the application.
 
-- **Domain/evaluation:** schemas, cost engine, policy engine, fixtures, metrics.
-- **AI/matching:** brief interpretation, catalog matching, prompts, AI provenance, fallback behavior.
-- **Simulator/data:** virtual clock, merchant events, scenario authoring, persistence.
-- **Product/UI:** request confirmation, timeline, decision receipt, mandate controls, demo polish.
+### Shared contract checkpoint — all three people
 
-Integrate vertically after Phase 1. Do not wait until the end to connect four independent components.
+Time-box this checkpoint to the beginning of the project. Agree on names and shapes before dividing into separate branches or worktrees.
+
+- [ ] Freeze the first versions of `ShoppingRequest`, `Mandate`, `OfferSnapshot`, `EvidenceBundle`, `MatchAssessment`, `LandedCost`, `DecisionRecord`, `SimulationEvent`, and `SimulatedOrder` as shared Zod schemas and inferred TypeScript types.
+- [ ] Agree on stable identifiers, timestamps, currency representation, `PASS`/`FAIL`/`UNKNOWN`, decision outcomes, and primary reason codes.
+- [ ] Create one valid headline fixture and one deliberately rejected fixture that conform to the contracts.
+- [ ] Create typed interfaces for the services each track supplies, with temporary in-memory stubs where implementation is not ready.
+- [ ] Assign Person A as the shared-contract custodian; contract changes require agreement from affected owners and must remain backward-compatible during a convergence checkpoint.
+- [ ] **Exit verification:** All three tracks compile against the same contracts and can run their initial tests without importing another track's private modules.
+
+### Person A — Trust core and evaluation
+
+Owns authoritative business judgment. This track contains no UI, database, simulator, or OpenAI dependencies.
+
+Primary ownership:
+
+```text
+src/domain/contracts/
+src/domain/pricing/
+src/domain/verification/
+src/domain/policy/
+src/domain/notifications/
+src/domain/audit/
+tests/unit/
+tests/evals/
+```
+
+Checklist:
+
+- [ ] Implement money, rounding, FX, delivery, tax, duty, fees, and coupon rules.
+- [ ] Implement product-requirement, seller, stock, discount, evidence-freshness, and landed-cost checks.
+- [ ] Implement deterministic decision precedence for `IGNORE`, `REJECT`, `ESCALATE`, `ALERT`, and `BUY_SIMULATED` eligibility.
+- [ ] Implement mandate scope validation and the pure pre-purchase authorization function.
+- [ ] Implement notification fingerprints and meaningful-improvement rules.
+- [ ] Implement the immutable decision record and deterministic concise/expanded receipt projections.
+- [ ] Build boundary-heavy unit tests and the evaluation metric calculator.
+- [ ] Publish pure test fixtures and service functions that Persons B and C can consume.
+- [ ] **Track verification:** Domain tests prove that above-cap, hard-mismatch, unavailable, stale-critical, and `UNKNOWN` purchase-critical offers never become purchase-eligible.
+
+Person A can begin immediately after the shared contract checkpoint using handcrafted offer and evidence fixtures.
+
+### Person B — Intelligence, catalog, and simulator
+
+Owns conversion of messy human and merchant inputs into structured evidence. This track never decides whether money may be spent.
+
+Primary ownership:
+
+```text
+src/domain/brief/
+src/domain/catalog/
+src/domain/matching/
+src/ai/
+src/simulator/
+tests/scenarios/
+```
+
+Checklist:
+
+- [ ] Implement Zod-validated shopping-brief interpretation with explicit ambiguities.
+- [ ] Build the canonical demo catalog, aliases, exact identifiers, normalized attributes, and disclosed seeded mappings.
+- [ ] Implement staged exact, seeded, normalized, attribute-level, and AI-assisted matching.
+- [ ] Persist prompt/schema/model versions and evidence provenance in every AI-derived `MatchAssessment`.
+- [ ] Add deterministic cached outputs or a non-AI fallback for the headline demo.
+- [ ] Implement the seeded virtual clock and play, pause, step, reset, and speed controls as services.
+- [ ] Author the headline event stream and at least 25 adversarial scenario fixtures with hidden ground truth.
+- [ ] Ensure runtime outputs contain only evidence and match assessments, never `ALERT` or `BUY_SIMULATED` decisions.
+- [ ] Publish a fixture-backed simulator adapter and matching service for Person C.
+- [ ] **Track verification:** The same seed produces the same event sequence, and matching tests distinguish exact, fuzzy, contradictory, and unresolved identities with traceable evidence.
+
+Person B can begin immediately after the shared contract checkpoint using a stub policy response supplied through the shared interface.
+
+### Person C — Application, persistence, UI, and integration
+
+Owns the executable product and convergence of the other tracks. This track orchestrates services but does not duplicate their business rules.
+
+Primary ownership:
+
+```text
+src/app/
+src/application/
+src/db/
+tests/e2e/
+```
+
+Checklist:
+
+- [ ] Scaffold Next.js, shared styling/components, SQLite/Drizzle, migrations, and repository adapters.
+- [ ] Implement request creation, interpreted-brief confirmation, activation, pause, and revocation flows.
+- [ ] Implement `evaluate-offer.ts` using typed matching, verification, pricing, policy, audit, and persistence interfaces.
+- [ ] Implement serialized `recheck-and-buy.ts`, idempotent simulated-order storage, and mandate consumption.
+- [ ] Build request, simulator controls, event timeline, verification, landed-cost, decision, mandate, and receipt views.
+- [ ] Build the evaluation dashboard from Person A's metrics and Person B's ground-truth scenarios.
+- [ ] Maintain in-memory stubs for unavailable Person A or B services so UI and orchestration work can continue asynchronously.
+- [ ] Replace stubs with real adapters at each convergence checkpoint and add a contract test for every replacement.
+- [ ] Own the clean-state reset command, demo runbook, Playwright journey, and final rehearsal.
+- [ ] **Track verification:** The app can run the full headline journey first with stubs and then with real services, without changing UI-facing contracts.
+
+Person C can begin immediately after the shared contract checkpoint using one fixed event fixture, one fixed decision record, and in-memory repositories.
+
+### Convergence checkpoints
+
+Do not wait until all three tracks are finished. Merge or rebase frequently, but integrate only at these stable interfaces.
+
+#### Checkpoint 1 — Compiling skeleton
+
+- [ ] Person B emits a fixture `ShoppingRequest`, `MatchAssessment`, and `SimulationEvent`.
+- [ ] Person A accepts fixture evidence and emits a fixture `DecisionRecord`.
+- [ ] Person C renders those records and persists them through in-memory adapters.
+- [ ] **Checkpoint verification:** One event travels from simulator-shaped input to a rendered decision without `any`, duplicate schemas, or cross-track private imports.
+
+#### Checkpoint 2 — Real alert slice
+
+- [ ] Integrate real brief interpretation and matching from Person B.
+- [ ] Integrate real landed cost and alert policy from Person A.
+- [ ] Persist and display the real decision receipt through Person C.
+- [ ] **Checkpoint verification:** The headline scenario rejects its first deceptive offers and produces one valid `ALERT` with exact arithmetic and evidence.
+
+#### Checkpoint 3 — Controlled purchase slice
+
+- [ ] Integrate mandate validation and authorization from Person A.
+- [ ] Feed current stock, coupon, FX, and offer events from Person B into the recheck.
+- [ ] Integrate transaction, revocation, idempotency, and purchase UI from Person C.
+- [ ] **Checkpoint verification:** The valid mandate buys once; expired, revoked, consumed, changed, or uncertain conditions block purchase.
+
+#### Checkpoint 4 — Evaluation and demo freeze
+
+- [ ] Run Person B's frozen scenarios through the integrated application.
+- [ ] Calculate Person A's metrics and inspect every failure.
+- [ ] Fix contract and integration defects, then freeze prompts, policies, fixtures, and demo seed.
+- [ ] Complete Person C's Playwright journey and clean-state demo rehearsal.
+- [ ] **Checkpoint verification:** The frozen suite meets the agreed targets and the complete demo runs from a clean checkout within the presentation time.
+
+### Branch and collaboration rules
+
+- Use one branch or worktree per track, for example `feat/trust-core`, `feat/intelligence-simulator`, and `feat/product-integration`.
+- Keep shared contracts in small, separately reviewed commits so all tracks can cherry-pick or merge them early.
+- Do not edit another person's owned directories without coordinating first.
+- Prefer fixture and contract-test commits over verbal descriptions of an unfinished interface.
+- Keep commits small enough to merge at every convergence checkpoint.
+- Person C is the integration owner, not the sole debugger; the owner of a failing service fixes its behavior or contract test.
+- Check a task only after its implementation and track verification pass, following the checklist rules in Section 12.
 
 ## 14. Main risks and mitigations
 
