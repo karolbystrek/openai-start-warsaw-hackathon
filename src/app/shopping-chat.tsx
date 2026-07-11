@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -34,6 +34,8 @@ type ConfirmationResponse = InterpretationResponse & {
   monitoring: "ACTIVE" | "DEFERRED";
 };
 
+const MAX_COMPOSER_HEIGHT = 130;
+
 const initialMessages: ChatMessage[] = [{
   id: "welcome",
   role: "assistant",
@@ -63,6 +65,7 @@ async function readResponse<T>(response: Response): Promise<T> {
 export function ShoppingChat() {
   const router = useRouter();
   const conversationEndRef = useRef<HTMLDivElement>(null);
+  const messageInputRef = useRef<HTMLTextAreaElement>(null);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [userTurns, setUserTurns] = useState<string[]>([]);
   const [input, setInput] = useState("");
@@ -205,6 +208,15 @@ export function ShoppingChat() {
     conversationEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [interpretation, messages, pending, userTurns.length]);
 
+  useLayoutEffect(() => {
+    const textarea = messageInputRef.current;
+    if (!textarea) return;
+
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, MAX_COMPOSER_HEIGHT)}px`;
+    textarea.style.overflowY = textarea.scrollHeight > MAX_COMPOSER_HEIGHT ? "auto" : "hidden";
+  }, [input]);
+
   return (
     <main className="chat-page">
       <header className="chat-topbar">
@@ -303,6 +315,7 @@ export function ShoppingChat() {
           maxLength={2_000}
           onChange={(event) => setInput(event.target.value)}
           placeholder="Describe what you want to buy…"
+          ref={messageInputRef}
           rows={1}
           value={input}
         />
